@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoQA</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">URL 기반 클라이언트 QA 자동화</p>
+        <h1>AutoQA</h1>
+      </div>
+      <button id="openScenario" class="ghost" type="button">시나리오 불러오기</button>
+    </section>
+
+    <section class="run-panel">
+      <label class="field url-field">
+        <span>테스트 대상 URL</span>
+        <input id="baseUrl" type="url" placeholder="https://example.com" autocomplete="url">
+      </label>
+      <label class="field compact">
+        <span>워커</span>
+        <input id="workers" type="number" min="1" max="16" value="1">
+      </label>
+      <label class="toggle">
+        <input id="headless" type="checkbox" checked>
+        <span>Headless</span>
+      </label>
+      <label class="toggle">
+        <input id="failFast" type="checkbox">
+        <span>Fail-fast</span>
+      </label>
+      <button id="runQa" class="primary" type="button">QA 실행</button>
+    </section>
+
+    <section class="workspace">
+      <div class="editor-wrap">
+        <div class="section-head">
+          <h2>QA 시나리오</h2>
+          <span id="scenarioFile">직접 작성 또는 Markdown/JSON 파일 불러오기</span>
+        </div>
+        <textarea id="scenarioText" spellcheck="false"># 시나리오: 홈 페이지 주요 문구 확인
+priority: Critical
+tags: [smoke]
+
+Given / 페이지로 이동한다
+Then 로그인 텍스트가 보인다</textarea>
+      </div>
+
+      <aside class="results">
+        <div class="section-head">
+          <h2>실행 결과</h2>
+          <span id="statusText">대기 중</span>
+        </div>
+        <div class="metrics">
+          <div><span>전체</span><strong id="totalCount">0</strong></div>
+          <div><span>통과</span><strong id="passCount">0</strong></div>
+          <div><span>실패</span><strong id="failCount">0</strong></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-meta">
+            <span id="progressPhase">대기 중</span>
+            <strong id="progressPercent">0%</strong>
+          </div>
+          <div class="progress-bar" aria-label="QA 진행률">
+            <div id="progressFill"></div>
+          </div>
+          <div class="time-grid">
+            <span>예상 <strong id="estimatedTime">-</strong></span>
+            <span>경과 <strong id="elapsedTime">-</strong></span>
+          </div>
+          <button id="cancelQa" class="danger hidden" type="button">QA 취소하기</button>
+        </div>
+        <div id="resultList" class="result-list"></div>
+        <button id="openReport" class="secondary hidden" type="button">HTML 리포트 열기</button>
+      </aside>
+    </section>
+  </main>
+  <script src="./renderer.js"></script>
+</body>
+</html>
