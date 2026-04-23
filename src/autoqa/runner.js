@@ -32,7 +32,7 @@ async function runAutoQa(options) {
     failed: 0
   };
 
-  const emitProgress = (phase, currentTitle = "") => {
+  const emitProgress = (phase, currentTitle = "", extra = {}) => {
     const elapsedMs = Date.now() - started;
     const estimatedTotalMs = completedUnits > 0
       ? Math.max(elapsedMs, Math.round((elapsedMs / completedUnits) * totalUnits))
@@ -49,7 +49,18 @@ async function runAutoQa(options) {
       scenarioFailed: scenarioProgress.failed,
       elapsedMs,
       estimatedTotalMs,
-      remainingMs: Math.max(0, estimatedTotalMs - elapsedMs)
+      remainingMs: Math.max(0, estimatedTotalMs - elapsedMs),
+      ...extra
+    });
+  };
+
+  const emitPagePreview = async (page, currentTitle, extra = {}) => {
+    const previewImage = await capturePagePreview(page);
+    if (!previewImage) return;
+    emitProgress("preview", currentTitle, {
+      previewImage,
+      previewUrl: page.url(),
+      ...extra
     });
   };
 
@@ -67,7 +78,7 @@ async function runAutoQa(options) {
   try {
     checkCancellation(options.cancellationToken);
     emitProgress("running", "기본 URL 상태 점검");
-    results.push(await runHealthCheck(context, baseUrl, options.artifactsDir));
+    results.push(await runHealthCheck(context, baseUrl, options.artifactsDir, emitPagePreview));
     completedUnits += 1;
     emitProgress("running", "기본 URL 상태 점검 완료");
 
@@ -75,7 +86,7 @@ async function runAutoQa(options) {
       for (const scenario of scenarios) {
         checkCancellation(options.cancellationToken);
         emitProgress("running", scenario.title);
-        const result = await runScenario(context, baseUrl, scenario, options.artifactsDir);
+        const result = await runScenario(context, baseUrl, scenario, options.artifactsDir, emitPagePreview);
         results.push(result);
         completedUnits += 1;
         updateScenarioProgress(scenarioProgress, result);
@@ -92,6 +103,7 @@ async function runAutoQa(options) {
           artifactsDir: options.artifactsDir,
           workers: options.workers,
           cancellationToken: options.cancellationToken,
+          onPreview: emitPagePreview,
           onScenarioStart: (scenario) => emitProgress("running", scenario.title),
           onScenarioDone: (scenario, result) => {
             completedUnits += 1;
@@ -134,6 +146,7 @@ async function runScenarioQueue({
   artifactsDir,
   workers,
   cancellationToken,
+  onPreview,
   onScenarioStart,
   onScenarioDone
 }) {
@@ -147,13 +160,27 @@ async function runScenarioQueue({
       const index = cursor;
       cursor += 1;
       onScenarioStart?.(scenarios[index]);
-      results[index] = await runScenario(context, baseUrl, scenarios[index], artifactsDir);
+      results[index] = await runScenario(context, baseUrl, scenarios[index], artifactsDir, onPreview);
       onScenarioDone?.(scenarios[index], results[index]);
     }
   }
 
   await Promise.all(Array.from({ length: concurrency }, worker));
   return results;
+}
+
+async function capturePagePreview(page) {
+  try {
+    const image = await page.screenshot({
+      type: "jpeg",
+      quality: 72,
+      fullPage: false,
+      animations: "disabled"
+    });
+    return `data:image/jpeg;base64,${image.toString("base64")}`;
+  } catch {
+    return "";
+  }
 }
 
 function checkCancellation(cancellationToken) {
@@ -168,6 +195,19 @@ function updateScenarioProgress(progress, result) {
   progress.completed += 1;
   if (result?.status === "passed") progress.passed += 1;
   if (result?.status === "failed") progress.failed += 1;
+}
+
+function formatStepPreview(step) {
+  if (!step) return "단계 실행";
+  if (step.action === "goto") return `${step.target} 페이지 이동`;
+  if (step.action === "fill") return `${step.target} 입력`;
+  if (step.action === "click") return `${step.target} 클릭`;
+  if (step.action === "select") return `${step.target} 선택`;
+  if (step.action === "download") return `${step.target} 다운로드`;
+  if (step.action === "expectText") return `${step.target} 텍스트 확인`;
+  if (step.action === "expectUrlContains") return `URL ${step.value} 포함 확인`;
+  if (step.action === "wait") return `${Math.round((step.value || 0) / 1000)}초 대기`;
+  return `${step.action || "단계"} 실행`;
 }
 
 function buildRunList(scenarioText) {
@@ -185,7 +225,7 @@ function buildRunList(scenarioText) {
   ];
 }
 
-async function runHealthCheck(context, baseUrl, artifactsDir) {
+async function runHealthCheck(context, baseUrl, artifactsDir, onPreview) {
   const started = Date.now();
   const page = await context.newPage();
   const consoleErrors = [];
@@ -203,6 +243,7 @@ async function runHealthCheck(context, baseUrl, artifactsDir) {
     }
 
     await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+    await onPreview?.(page, "기본 URL 상태 점검 화면");
     const brokenImages = await page.locator("img").evaluateAll((images) =>
       images
         .filter((img) => img.complete && img.naturalWidth === 0)
@@ -224,6 +265,7 @@ async function runHealthCheck(context, baseUrl, artifactsDir) {
       durationMs: Date.now() - started
     };
   } catch (error) {
+    await onPreview?.(page, "기본 URL 상태 점검 실패", { previewStatus: "failed" });
     const screenshot = path.join(artifactsDir, "health-check.png");
     await page.screenshot({ path: screenshot, fullPage: true }).catch(() => {});
     return {
@@ -239,14 +281,17 @@ async function runHealthCheck(context, baseUrl, artifactsDir) {
   }
 }
 
-async function runScenario(context, baseUrl, scenario, artifactsDir) {
+async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview) {
   const started = Date.now();
   const page = await context.newPage();
 
   try {
     await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await onPreview?.(page, `${scenario.title} 시작`);
     for (const step of scenario.steps) {
       await executeStep(page, baseUrl, step, artifactsDir, scenario.id);
+      await page.waitForLoadState("networkidle", { timeout: 3000 }).catch(() => {});
+      await onPreview?.(page, `${scenario.title} · ${formatStepPreview(step)}`);
     }
 
     return {
@@ -258,6 +303,7 @@ async function runScenario(context, baseUrl, scenario, artifactsDir) {
       durationMs: Date.now() - started
     };
   } catch (error) {
+    await onPreview?.(page, `${scenario.title} 실패`, { previewStatus: "failed" });
     const safeId = scenario.id.replace(/[^a-z0-9_-]/gi, "-");
     const screenshot = path.join(artifactsDir, `${safeId}.png`);
     await page.screenshot({ path: screenshot, fullPage: true }).catch(() => {});

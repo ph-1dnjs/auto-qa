@@ -95,13 +95,30 @@
         <div class="section-head">
           <h2>QA 시나리오</h2>
           <span id="scenarioFile">직접 작성 또는 Markdown/JSON 파일 불러오기</span>
+          <button id="toggleScenarioAccordion" class="secondary compact-button" type="button">접기</button>
         </div>
-        <textarea id="scenarioText" spellcheck="false"># 시나리오: 홈 페이지 주요 문구 확인
+        <div id="scenarioAccordion" class="scenario-accordion open">
+          <textarea id="scenarioText" spellcheck="false"># 시나리오: 홈 페이지 주요 문구 확인
 priority: Critical
 tags: [smoke]
 
 Given / 페이지로 이동한다
 Then 로그인 텍스트가 보인다</textarea>
+        </div>
+        <section id="progressPreview" class="progress-preview hidden" aria-live="polite">
+          <div class="progress-preview-head">
+            <h2>테스트 화면 Preview</h2>
+            <span id="progressPreviewSummary">대기 중</span>
+          </div>
+          <div class="progress-preview-stage">
+            <img id="progressPreviewImage" alt="실시간 QA 테스트 화면">
+            <div id="progressPreviewEmpty" class="progress-preview-empty">테스트 화면을 기다리는 중입니다.</div>
+          </div>
+          <div class="progress-preview-caption">
+            <strong id="progressPreviewTitle">QA 실행 준비</strong>
+            <span id="progressPreviewUrl">-</span>
+          </div>
+        </section>
       </div>
 
       <aside class="results">

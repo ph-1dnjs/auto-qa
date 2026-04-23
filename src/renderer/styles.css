@@ -395,6 +395,107 @@ textarea {
   outline: none;
 }
 
+.compact-button {
+  height: 34px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.scenario-accordion {
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+}
+
+.scenario-accordion:not(.open) {
+  max-height: 0;
+  border-bottom: 0;
+}
+
+.scenario-accordion:not(.open) textarea {
+  min-height: 0;
+}
+
+.progress-preview {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.progress-preview.hidden {
+  display: none;
+}
+
+.progress-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.progress-preview-head h2 {
+  font-size: 16px;
+}
+
+.progress-preview-head span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.progress-preview-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 420px;
+  background: #111827;
+  overflow: hidden;
+}
+
+#progressPreviewImage {
+  display: none;
+  width: 100%;
+  height: 100%;
+  max-height: 560px;
+  object-fit: contain;
+  background: #111827;
+}
+
+#progressPreviewImage.visible {
+  display: block;
+}
+
+.progress-preview-empty {
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.progress-preview-empty.hidden {
+  display: none;
+}
+
+.progress-preview-caption {
+  display: grid;
+  gap: 4px;
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.progress-preview-caption strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.progress-preview-caption span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .results {
   display: flex;
   flex-direction: column;

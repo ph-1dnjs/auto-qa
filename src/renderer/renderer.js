@@ -5,6 +5,14 @@ const elements = {
   failFast: document.querySelector("#failFast"),
   scenarioText: document.querySelector("#scenarioText"),
   scenarioFile: document.querySelector("#scenarioFile"),
+  scenarioAccordion: document.querySelector("#scenarioAccordion"),
+  toggleScenarioAccordion: document.querySelector("#toggleScenarioAccordion"),
+  progressPreview: document.querySelector("#progressPreview"),
+  progressPreviewSummary: document.querySelector("#progressPreviewSummary"),
+  progressPreviewImage: document.querySelector("#progressPreviewImage"),
+  progressPreviewEmpty: document.querySelector("#progressPreviewEmpty"),
+  progressPreviewTitle: document.querySelector("#progressPreviewTitle"),
+  progressPreviewUrl: document.querySelector("#progressPreviewUrl"),
   openScenario: document.querySelector("#openScenario"),
   saveScenario: document.querySelector("#saveScenario"),
   extractScenario: document.querySelector("#extractScenario"),
@@ -79,6 +87,10 @@ elements.saveExtractorScenario.addEventListener("click", saveCurrentScenario);
 
 elements.scenarioText.addEventListener("input", renderExtractorScenarioPreview);
 
+elements.toggleScenarioAccordion.addEventListener("click", () => {
+  setScenarioAccordionOpen(!elements.scenarioAccordion.classList.contains("open"));
+});
+
 elements.extractorTogglePin.addEventListener("click", () => {
   sendExtractorRecorderCommand("toggleCapture");
 });
@@ -117,8 +129,10 @@ elements.runQa.addEventListener("click", async () => {
   runStartedAt = Date.now();
   const scenarioTotal = countScenarioRuns(elements.scenarioText.value);
   setRunning(true);
+  setScenarioAccordionOpen(false);
   renderResults([]);
   renderRunCounts({ total: scenarioTotal, passed: 0, failed: 0 });
+  resetScreenPreview(scenarioTotal);
   resetProgress(scenarioTotal);
   startProgressTicker();
   latestReportPath = null;
@@ -260,6 +274,32 @@ function renderRunCounts({ total, passed, failed }) {
   elements.totalCount.textContent = String(total ?? 0);
   elements.passCount.textContent = String(passed ?? 0);
   elements.failCount.textContent = String(failed ?? 0);
+}
+
+function setScenarioAccordionOpen(isOpen) {
+  elements.scenarioAccordion.classList.toggle("open", isOpen);
+  elements.toggleScenarioAccordion.textContent = isOpen ? "접기" : "펼치기";
+}
+
+function resetScreenPreview(scenarioTotal = 0) {
+  elements.progressPreview.classList.remove("hidden");
+  elements.progressPreviewSummary.textContent = `전체 ${scenarioTotal}개 / 통과 0 / 실패 0`;
+  elements.progressPreviewImage.removeAttribute("src");
+  elements.progressPreviewImage.classList.remove("visible");
+  elements.progressPreviewEmpty.classList.remove("hidden");
+  elements.progressPreviewTitle.textContent = "QA 실행 준비";
+  elements.progressPreviewUrl.textContent = "-";
+}
+
+function renderScreenPreview(progress) {
+  if (!progress.previewImage) return;
+  elements.progressPreview.classList.remove("hidden");
+  elements.progressPreviewImage.src = progress.previewImage;
+  elements.progressPreviewImage.classList.add("visible");
+  elements.progressPreviewEmpty.classList.add("hidden");
+  elements.progressPreviewTitle.textContent =
+    progress.currentTitle || "테스트 화면 업데이트";
+  elements.progressPreviewUrl.textContent = progress.previewUrl || "-";
 }
 
 async function saveCurrentScenario() {
@@ -547,7 +587,10 @@ function renderProgress(progress) {
       passed: progress.scenarioPassed || 0,
       failed: progress.scenarioFailed || 0,
     });
+    elements.progressPreviewSummary.textContent =
+      `전체 ${progress.scenarioTotal}개 / 통과 ${progress.scenarioPassed || 0} / 실패 ${progress.scenarioFailed || 0}`;
   }
+  renderScreenPreview(progress);
 }
 
 function estimateTotalMs(progress, elapsedMs) {
