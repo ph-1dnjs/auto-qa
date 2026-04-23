@@ -17,9 +17,24 @@ function ready(callback) {
 
 ready(() => {
   installStyles();
-  installPanel();
+  installBridge();
   installCaptureLayer();
+  emitRecorderState();
 });
+
+function installBridge() {
+  document.addEventListener("autoqa-recorder-command", (event) => {
+    const detail = event.detail || {};
+    if (detail.action === "toggleCapture") setCaptureEnabled(!state.enabled);
+    if (detail.action === "addCurrentPath") {
+      addConfirmedStep(`Given ${window.location.pathname || "/"} 페이지로 이동한다`, null, "action");
+    }
+    if (detail.action === "undoStep") undoStep();
+    if (detail.action === "clearSteps") clearSteps();
+    if (detail.action === "commitScenario") commitScenario(detail.title);
+    if (detail.action === "refresh") emitRecorderState();
+  });
+}
 
 function installStyles() {
   const style = document.createElement("style");
@@ -30,7 +45,7 @@ function installStyles() {
       top: 18px;
       right: 18px;
       width: 360px;
-      max-height: calc(100vh - 36px);
+      max-height: calc(var(--autoqa-host-viewport-height, 100vh) - 36px);
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -248,6 +263,7 @@ function setCaptureEnabled(enabled) {
   document.querySelector("#autoqa-capture-layer")?.classList.toggle("active", enabled);
   const toggle = document.querySelector("#autoqa-toggle");
   if (toggle) toggle.textContent = enabled ? "핀 추가 끄기" : "핀 추가 켜기";
+  emitRecorderState();
 }
 
 function createDraftAt(clientX, clientY) {
@@ -322,6 +338,7 @@ function addConfirmedStep(step, pin, actionType) {
   state.steps.push({ step, pin, actionType });
   if (pin) state.pins.push(pin);
   renderSteps();
+  emitRecorderState();
 }
 
 function createPin(clientX, clientY, order, extraClass = "") {
@@ -339,6 +356,7 @@ function undoStep() {
   if (item?.pin) item.pin.remove();
   state.pins = state.pins.filter((pin) => pin !== item?.pin);
   renderSteps();
+  emitRecorderState();
 }
 
 function clearSteps() {
@@ -347,6 +365,7 @@ function clearSteps() {
   state.pins.forEach((pin) => pin.remove());
   state.pins = [];
   renderSteps();
+  emitRecorderState();
 }
 
 function renderSteps() {
@@ -359,8 +378,8 @@ function renderSteps() {
     : `<div class="step">아직 추가된 핀이 없습니다.</div>`;
 }
 
-function commitScenario() {
-  const title = document.querySelector("#autoqa-title")?.value || "추출 시나리오";
+function commitScenario(titleValue) {
+  const title = titleValue || document.querySelector("#autoqa-title")?.value || "추출 시나리오";
   const steps = state.steps.length
     ? state.steps.map((item) => item.step)
     : [`Given ${window.location.pathname || "/"} 페이지로 이동한다`];
@@ -376,6 +395,13 @@ function commitScenario() {
     title,
     markdown,
     url: window.location.href
+  });
+}
+
+function emitRecorderState() {
+  ipcRenderer.send("scenario:recorder-state", {
+    enabled: state.enabled,
+    steps: state.steps.map((item) => item.step),
   });
 }
 

@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("autoqa", {
   openScenario: () => ipcRenderer.invoke("scenario:open"),
+  saveScenario: (payload) => ipcRenderer.invoke("scenario:save", payload),
   openScenarioExtractor: (payload) => ipcRenderer.invoke("scenario:extract-open", payload),
   run: (payload) => ipcRenderer.invoke("qa:run", payload),
   cancel: (runId) => ipcRenderer.invoke("qa:cancel", runId),
@@ -15,5 +16,10 @@ contextBridge.exposeInMainWorld("autoqa", {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on("scenario:extracted", listener);
     return () => ipcRenderer.removeListener("scenario:extracted", listener);
+  },
+  onRecorderState: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("scenario:recorder-state", listener);
+    return () => ipcRenderer.removeListener("scenario:recorder-state", listener);
   }
 });

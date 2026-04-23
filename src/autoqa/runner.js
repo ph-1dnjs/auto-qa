@@ -25,6 +25,12 @@ async function runAutoQa(options) {
   const scenarios = buildRunList(options.scenarioText);
   const totalUnits = scenarios.length + 1;
   let completedUnits = 0;
+  const scenarioProgress = {
+    total: scenarios.length,
+    completed: 0,
+    passed: 0,
+    failed: 0
+  };
 
   const emitProgress = (phase, currentTitle = "") => {
     const elapsedMs = Date.now() - started;
@@ -37,6 +43,10 @@ async function runAutoQa(options) {
       completed: completedUnits,
       total: totalUnits,
       percent: Math.round((completedUnits / totalUnits) * 100),
+      scenarioTotal: scenarioProgress.total,
+      scenarioCompleted: scenarioProgress.completed,
+      scenarioPassed: scenarioProgress.passed,
+      scenarioFailed: scenarioProgress.failed,
       elapsedMs,
       estimatedTotalMs,
       remainingMs: Math.max(0, estimatedTotalMs - elapsedMs)
@@ -65,8 +75,10 @@ async function runAutoQa(options) {
       for (const scenario of scenarios) {
         checkCancellation(options.cancellationToken);
         emitProgress("running", scenario.title);
-        results.push(await runScenario(context, baseUrl, scenario, options.artifactsDir));
+        const result = await runScenario(context, baseUrl, scenario, options.artifactsDir);
+        results.push(result);
         completedUnits += 1;
+        updateScenarioProgress(scenarioProgress, result);
         emitProgress("running", `${scenario.title} 완료`);
         if (results.at(-1).status === "failed") break;
       }
@@ -81,8 +93,9 @@ async function runAutoQa(options) {
           workers: options.workers,
           cancellationToken: options.cancellationToken,
           onScenarioStart: (scenario) => emitProgress("running", scenario.title),
-          onScenarioDone: (scenario) => {
+          onScenarioDone: (scenario, result) => {
             completedUnits += 1;
+            updateScenarioProgress(scenarioProgress, result);
             emitProgress("running", `${scenario.title} 완료`);
           }
         }))
@@ -102,7 +115,10 @@ async function runAutoQa(options) {
     durationMs,
     total: results.length,
     passed: results.filter((item) => item.status === "passed").length,
-    failed: results.filter((item) => item.status === "failed").length
+    failed: results.filter((item) => item.status === "failed").length,
+    scenarioTotal: scenarioProgress.total,
+    scenarioPassed: scenarioProgress.passed,
+    scenarioFailed: scenarioProgress.failed
   };
 
   const reports = await writeReports({ summary, results, artifactsDir: options.artifactsDir });
@@ -132,7 +148,7 @@ async function runScenarioQueue({
       cursor += 1;
       onScenarioStart?.(scenarios[index]);
       results[index] = await runScenario(context, baseUrl, scenarios[index], artifactsDir);
-      onScenarioDone?.(scenarios[index]);
+      onScenarioDone?.(scenarios[index], results[index]);
     }
   }
 
@@ -146,6 +162,12 @@ function checkCancellation(cancellationToken) {
     error.code = "AUTOQA_CANCELLED";
     throw error;
   }
+}
+
+function updateScenarioProgress(progress, result) {
+  progress.completed += 1;
+  if (result?.status === "passed") progress.passed += 1;
+  if (result?.status === "failed") progress.failed += 1;
 }
 
 function buildRunList(scenarioText) {

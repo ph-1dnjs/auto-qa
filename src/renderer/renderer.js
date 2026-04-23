@@ -6,10 +6,22 @@ const elements = {
   scenarioText: document.querySelector("#scenarioText"),
   scenarioFile: document.querySelector("#scenarioFile"),
   openScenario: document.querySelector("#openScenario"),
+  saveScenario: document.querySelector("#saveScenario"),
   extractScenario: document.querySelector("#extractScenario"),
   extractorShell: document.querySelector("#extractorShell"),
   extractorUrl: document.querySelector("#extractorUrl"),
   extractorWebview: document.querySelector("#extractorWebview"),
+  extractorScenarioPreview: document.querySelector("#extractorScenarioPreview"),
+  extractorScenarioCount: document.querySelector("#extractorScenarioCount"),
+  saveExtractorScenario: document.querySelector("#saveExtractorScenario"),
+  extractorRecorderTitle: document.querySelector("#extractorRecorderTitle"),
+  extractorTogglePin: document.querySelector("#extractorTogglePin"),
+  extractorAddPath: document.querySelector("#extractorAddPath"),
+  extractorUndoStep: document.querySelector("#extractorUndoStep"),
+  extractorClearSteps: document.querySelector("#extractorClearSteps"),
+  extractorCommitScenario: document.querySelector("#extractorCommitScenario"),
+  extractorRecorderSteps: document.querySelector("#extractorRecorderSteps"),
+  extractorRecorderCount: document.querySelector("#extractorRecorderCount"),
   closeExtractor: document.querySelector("#closeExtractor"),
   runQa: document.querySelector("#runQa"),
   statusText: document.querySelector("#statusText"),
@@ -31,6 +43,8 @@ let activeRunId = null;
 let runStartedAt = 0;
 let progressTimer = null;
 let latestProgress = null;
+let extractorResizeObserver = null;
+let extractorFrameObserver = null;
 
 window.autoqa.onProgress((progress) => {
   if (progress.runId !== activeRunId) return;
@@ -45,6 +59,11 @@ window.autoqa.onScenarioExtracted((payload) => {
     ? `${current}\n\n${payload.markdown.trim()}\n`
     : `${payload.markdown.trim()}\n`;
   elements.scenarioFile.textContent = "시나리오 추출 결과가 추가됨";
+  renderExtractorScenarioPreview();
+});
+
+window.autoqa.onRecorderState((state) => {
+  renderExtractorRecorderState(state);
 });
 
 elements.openScenario.addEventListener("click", async () => {
@@ -52,6 +71,34 @@ elements.openScenario.addEventListener("click", async () => {
   if (!file) return;
   elements.scenarioText.value = file.content;
   elements.scenarioFile.textContent = file.filePath;
+  renderExtractorScenarioPreview();
+});
+
+elements.saveScenario.addEventListener("click", saveCurrentScenario);
+elements.saveExtractorScenario.addEventListener("click", saveCurrentScenario);
+
+elements.scenarioText.addEventListener("input", renderExtractorScenarioPreview);
+
+elements.extractorTogglePin.addEventListener("click", () => {
+  sendExtractorRecorderCommand("toggleCapture");
+});
+
+elements.extractorAddPath.addEventListener("click", () => {
+  sendExtractorRecorderCommand("addCurrentPath");
+});
+
+elements.extractorUndoStep.addEventListener("click", () => {
+  sendExtractorRecorderCommand("undoStep");
+});
+
+elements.extractorClearSteps.addEventListener("click", () => {
+  sendExtractorRecorderCommand("clearSteps");
+});
+
+elements.extractorCommitScenario.addEventListener("click", () => {
+  sendExtractorRecorderCommand("commitScenario", {
+    title: elements.extractorRecorderTitle.value,
+  });
 });
 
 elements.extractScenario.addEventListener("click", async () => {
@@ -68,9 +115,11 @@ elements.closeExtractor.addEventListener("click", () => {
 elements.runQa.addEventListener("click", async () => {
   activeRunId = `run-${Date.now()}`;
   runStartedAt = Date.now();
+  const scenarioTotal = countScenarioRuns(elements.scenarioText.value);
   setRunning(true);
   renderResults([]);
-  resetProgress();
+  renderRunCounts({ total: scenarioTotal, passed: 0, failed: 0 });
+  resetProgress(scenarioTotal);
   startProgressTicker();
   latestReportPath = null;
   elements.openReport.classList.add("hidden");
@@ -86,9 +135,11 @@ elements.runQa.addEventListener("click", async () => {
     });
 
     elements.statusText.textContent = "완료";
-    elements.totalCount.textContent = result.summary.total;
-    elements.passCount.textContent = result.summary.passed;
-    elements.failCount.textContent = result.summary.failed;
+    renderRunCounts({
+      total: result.summary.scenarioTotal ?? result.summary.total,
+      passed: result.summary.scenarioPassed ?? result.summary.passed,
+      failed: result.summary.scenarioFailed ?? result.summary.failed,
+    });
     renderResults(result.results);
     latestReportPath = result.reports.htmlPath;
     elements.openReport.classList.remove("hidden");
@@ -138,13 +189,13 @@ function setRunning(isRunning) {
 function openEmbeddedExtractor(config) {
   if (!config?.targetUrl || !config?.preloadUrl) return;
   elements.extractorUrl.textContent = config.targetUrl;
+  renderExtractorScenarioPreview();
+  renderExtractorRecorderState();
   elements.extractorWebview.setAttribute("preload", config.preloadUrl);
   elements.extractorWebview.removeAttribute("src");
   elements.extractorShell.classList.remove("hidden");
   document.body.classList.add("extractor-open");
-  window.requestAnimationFrame(() => {
-    sizeExtractorWebview();
-  });
+  startExtractorSizing();
   window.addEventListener("resize", sizeExtractorWebview);
   elements.extractorWebview.addEventListener(
     "dom-ready",
@@ -153,6 +204,7 @@ function openEmbeddedExtractor(config) {
         elements.extractorWebview.setZoomFactor(1);
       }
       normalizeExtractorGuestViewport();
+      sendExtractorRecorderCommand("refresh");
     },
     { once: true },
   );
@@ -172,14 +224,199 @@ function closeEmbeddedExtractor() {
   elements.extractorShell.classList.add("hidden");
   document.body.classList.remove("extractor-open");
   window.removeEventListener("resize", sizeExtractorWebview);
+  stopExtractorSizing();
+}
+
+function renderExtractorScenarioPreview() {
+  const scenario = elements.scenarioText.value.trim();
+  const lineCount = scenario ? scenario.split(/\r\n|\r|\n/).length : 0;
+  elements.extractorScenarioPreview.textContent =
+    scenario || "현재 작성된 시나리오가 없습니다.";
+  elements.extractorScenarioCount.textContent = `${lineCount}줄`;
+}
+
+function countScenarioRuns(input) {
+  const text = String(input || "").replace(/\r\n/g, "\n").trim();
+  if (!text) return 1;
+
+  if (text.startsWith("[") || text.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(text);
+      const items = Array.isArray(parsed) ? parsed : parsed.scenarios || [];
+      return Math.max(1, items.length);
+    } catch {
+      return 1;
+    }
+  }
+
+  const blocks = text
+    .split(/\n(?=#{1,3}\s*시나리오:|\n?Scenario:|\n?시나리오:)/i)
+    .map((block) => block.trim())
+    .filter(Boolean);
+  return Math.max(1, blocks.length);
+}
+
+function renderRunCounts({ total, passed, failed }) {
+  elements.totalCount.textContent = String(total ?? 0);
+  elements.passCount.textContent = String(passed ?? 0);
+  elements.failCount.textContent = String(failed ?? 0);
+}
+
+async function saveCurrentScenario() {
+  const content = elements.scenarioText.value.trim();
+  if (!content) {
+    elements.scenarioFile.textContent = "저장할 시나리오가 없습니다";
+    return;
+  }
+
+  const buttons = [elements.saveScenario, elements.saveExtractorScenario];
+  buttons.forEach((button) => {
+    button.disabled = true;
+  });
+
+  try {
+    const result = await window.autoqa.saveScenario({
+      content,
+      title: inferScenarioTitle(content),
+    });
+    if (!result) return;
+    elements.scenarioFile.textContent = result.filePath;
+    renderExtractorScenarioPreview();
+  } catch (error) {
+    elements.scenarioFile.textContent = error.message || "시나리오 저장 실패";
+  } finally {
+    buttons.forEach((button) => {
+      button.disabled = false;
+    });
+  }
+}
+
+function inferScenarioTitle(content) {
+  const match = content.match(/^(?:#{1,3}\s*)?(?:시나리오|Scenario)\s*:\s*(.+)$/im);
+  return match?.[1]?.trim() || "autoqa-scenario";
+}
+
+function renderExtractorRecorderState(state = {}) {
+  const steps = Array.isArray(state.steps) ? state.steps : [];
+  elements.extractorTogglePin.textContent = state.enabled
+    ? "핀 추가 끄기"
+    : "핀 추가 켜기";
+  elements.extractorRecorderCount.textContent = `${steps.length}개`;
+  elements.extractorRecorderSteps.innerHTML = steps.length
+    ? steps
+      .map(
+        (step, index) =>
+          `<div class="extractor-recorder-step"><strong>${index + 1}.</strong> ${escapeHtml(step)}</div>`,
+      )
+      .join("")
+    : `<div class="extractor-recorder-step">아직 추가된 핀이 없습니다.</div>`;
+}
+
+async function sendExtractorRecorderCommand(action, detail = {}) {
+  if (typeof elements.extractorWebview.executeJavaScript !== "function") return;
+  const payload = JSON.stringify({ action, ...detail });
+  await elements.extractorWebview
+    .executeJavaScript(
+      `
+      document.dispatchEvent(new CustomEvent('autoqa-recorder-command', {
+        detail: ${payload}
+      }));
+    `,
+    )
+    .catch(() => {});
+}
+
+function startExtractorSizing() {
+  stopExtractorSizing();
+  sizeExtractorWebview();
+  window.requestAnimationFrame(() => {
+    sizeExtractorWebview();
+    window.requestAnimationFrame(sizeExtractorWebview);
+  });
+
+  if (typeof ResizeObserver !== "undefined") {
+    extractorResizeObserver = new ResizeObserver(sizeExtractorWebview);
+    extractorResizeObserver.observe(elements.extractorShell);
+  }
+
+  if (typeof MutationObserver !== "undefined") {
+    extractorFrameObserver = new MutationObserver(sizeExtractorWebview);
+    extractorFrameObserver.observe(elements.extractorWebview, {
+      childList: true,
+      subtree: true,
+    });
+  }
+}
+
+function stopExtractorSizing() {
+  extractorResizeObserver?.disconnect();
+  extractorResizeObserver = null;
+  extractorFrameObserver?.disconnect();
+  extractorFrameObserver = null;
 }
 
 function sizeExtractorWebview() {
+  const { height, width } = getExtractorWebviewSize();
+  elements.extractorWebview.setAttribute("minheight", String(height));
+  elements.extractorWebview.setAttribute("maxheight", String(height));
+  elements.extractorWebview.setAttribute("minwidth", String(width));
+  elements.extractorWebview.setAttribute("maxwidth", String(width));
+  elements.extractorWebview.style.height = `${height}px`;
+  elements.extractorWebview.style.width = `${width}px`;
+  sizeExtractorHostFrame(height, width);
+}
+
+function getExtractorWebviewSize() {
+  const content = elements.extractorShell.querySelector(".extractor-content");
+  const contentRect = content?.getBoundingClientRect();
+  const webviewRect = elements.extractorWebview.getBoundingClientRect();
   const toolbar = elements.extractorShell.querySelector(".extractor-toolbar");
   const toolbarHeight = toolbar?.offsetHeight || 62;
-  const height = Math.max(420, elements.extractorShell.clientHeight - toolbarHeight);
-  elements.extractorWebview.style.height = `${height}px`;
-  elements.extractorWebview.style.width = `${elements.extractorShell.clientWidth}px`;
+  const height =
+    contentRect?.height || elements.extractorShell.clientHeight - toolbarHeight;
+  const width = webviewRect.width || contentRect?.width || elements.extractorShell.clientWidth;
+  return {
+    height: Math.max(420, Math.floor(height)),
+    width: Math.max(320, Math.floor(width)),
+  };
+}
+
+function sizeExtractorHostFrame(height, width) {
+  elements.extractorWebview.style.display = "flex";
+  elements.extractorWebview.style.alignItems = "stretch";
+
+  const styleId = "autoqa-webview-host-frame-fix";
+  let style = elements.extractorWebview.querySelector(`#${styleId}`);
+  if (!style) {
+    style = document.createElement("style");
+    style.id = styleId;
+    elements.extractorWebview.appendChild(style);
+  }
+  style.textContent = `
+    :host { display: flex !important; align-items: stretch !important; }
+    iframe {
+      flex: 1 1 auto !important;
+      width: 100% !important;
+      height: 100% !important;
+      min-height: ${height}px !important;
+      max-height: none !important;
+      border: 0 !important;
+    }
+  `;
+
+  const hostFrames = [
+    elements.extractorWebview.querySelector("iframe"),
+    elements.extractorWebview.shadowRoot?.querySelector("iframe"),
+  ].filter(Boolean);
+
+  for (const frame of hostFrames) {
+    frame.style.flex = "1 1 auto";
+    frame.style.width = "100%";
+    frame.style.height = "100%";
+    frame.style.minHeight = `${height}px`;
+    frame.style.maxHeight = "none";
+    frame.style.border = "0";
+  }
 }
 
 async function resetExtractorScroll() {
@@ -205,6 +442,7 @@ async function normalizeExtractorGuestViewport() {
   await resetExtractorScroll();
 
   if (typeof elements.extractorWebview.executeJavaScript !== "function") return;
+  const { height: hostViewportHeight } = getExtractorWebviewSize();
   await elements.extractorWebview
     .executeJavaScript(
       `
@@ -216,10 +454,20 @@ async function normalizeExtractorGuestViewport() {
         style.id = styleId;
         document.documentElement.appendChild(style);
       }
+      const viewportHeight = Math.max(window.innerHeight, ${hostViewportHeight});
+      document.documentElement.style.setProperty('--autoqa-host-viewport-height', viewportHeight + 'px');
       style.textContent = [
-        'html { min-height: 100% !important; margin: 0 !important; overflow: auto !important; }',
-        'body { min-height: 100% !important; margin: 0 !important; overflow: auto !important; }'
+        'html { height: 100% !important; min-height: ' + viewportHeight + 'px !important; margin: 0 !important; overflow: auto !important; }',
+        'body { height: 100% !important; min-height: ' + viewportHeight + 'px !important; margin: 0 !important; overflow: auto !important; }',
+        '#root, #__next, #app, .app, [data-reactroot] { min-height: ' + viewportHeight + 'px !important; }',
+        'iframe { height: 100% !important; min-height: ' + viewportHeight + 'px !important; max-height: none !important; }'
       ].join('\\n');
+
+      for (const frame of document.querySelectorAll('iframe')) {
+        frame.style.height = '100%';
+        frame.style.minHeight = viewportHeight + 'px';
+        frame.style.maxHeight = 'none';
+      }
 
       document.documentElement.style.scrollBehavior = 'auto';
       document.body.style.scrollBehavior = 'auto';
@@ -249,7 +497,7 @@ async function normalizeExtractorGuestViewport() {
   await resetExtractorScroll();
 }
 
-function resetProgress() {
+function resetProgress(scenarioTotal = 0) {
   latestProgress = {
     phase: "starting",
     currentTitle: "준비 중",
@@ -259,6 +507,9 @@ function resetProgress() {
     elapsedMs: 0,
     estimatedTotalMs: 0,
     remainingMs: 0,
+    scenarioTotal,
+    scenarioPassed: 0,
+    scenarioFailed: 0,
   };
   renderProgress(latestProgress);
 }
@@ -290,6 +541,13 @@ function renderProgress(progress) {
   elements.progressFill.style.width = `${percent}%`;
   elements.estimatedTime.textContent = formatDuration(estimatedTotalMs);
   elements.elapsedTime.textContent = formatDuration(elapsedMs);
+  if (Number.isFinite(progress.scenarioTotal)) {
+    renderRunCounts({
+      total: progress.scenarioTotal,
+      passed: progress.scenarioPassed || 0,
+      failed: progress.scenarioFailed || 0,
+    });
+  }
 }
 
 function estimateTotalMs(progress, elapsedMs) {

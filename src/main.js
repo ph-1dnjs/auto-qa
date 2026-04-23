@@ -61,6 +61,29 @@ ipcMain.handle("scenario:open", async () => {
   return { filePath, content };
 });
 
+ipcMain.handle("scenario:save", async (_event, payload) => {
+  const content = String(payload?.content || "").trimEnd();
+  if (!content) throw new Error("저장할 시나리오가 없습니다.");
+
+  const title = payload?.title || extractScenarioTitle(content) || "autoqa-scenario";
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "QA 시나리오 저장",
+    defaultPath: `${sanitizeFileName(title)}.md`,
+    filters: [
+      { name: "Markdown", extensions: ["md"] },
+      { name: "All files", extensions: ["*"] }
+    ]
+  });
+
+  if (result.canceled || !result.filePath) return null;
+
+  const filePath = path.extname(result.filePath)
+    ? result.filePath
+    : `${result.filePath}.md`;
+  await fs.writeFile(filePath, `${content}\n`, "utf8");
+  return { filePath };
+});
+
 ipcMain.handle("scenario:extract-open", async (_event, payload) => {
   const targetUrl = normalizeRecorderUrl(payload?.baseUrl);
   return {
@@ -71,6 +94,10 @@ ipcMain.handle("scenario:extract-open", async (_event, payload) => {
 
 ipcMain.on("scenario:extracted", (_event, payload) => {
   mainWindow?.webContents.send("scenario:extracted", payload);
+});
+
+ipcMain.on("scenario:recorder-state", (_event, payload) => {
+  mainWindow?.webContents.send("scenario:recorder-state", payload);
 });
 
 ipcMain.handle("qa:run", async (_event, payload) => {
@@ -118,4 +145,17 @@ function normalizeRecorderUrl(url) {
   if (!trimmed) throw new Error("시나리오 추출 대상 URL을 입력하세요.");
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
+}
+
+function extractScenarioTitle(content) {
+  const match = content.match(/^(?:#{1,3}\s*)?(?:시나리오|Scenario)\s*:\s*(.+)$/im);
+  return match?.[1]?.trim();
+}
+
+function sanitizeFileName(value) {
+  return String(value || "autoqa-scenario")
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80) || "autoqa-scenario";
 }
