@@ -13,7 +13,10 @@
         <p class="eyebrow">URL 기반 클라이언트 QA 자동화</p>
         <h1>AutoQA</h1>
       </div>
-      <button id="openScenario" class="ghost" type="button">시나리오 불러오기</button>
+      <div class="hero-actions">
+        <button id="extractScenario" class="ghost" type="button">시나리오 추출</button>
+        <button id="openScenario" class="ghost" type="button">시나리오 불러오기</button>
+      </div>
     </section>
 
     <section class="run-panel">
@@ -34,6 +37,17 @@
         <span>Fail-fast</span>
       </label>
       <button id="runQa" class="primary" type="button">QA 실행</button>
+    </section>
+
+    <section id="extractorShell" class="extractor-shell hidden">
+      <div class="extractor-toolbar">
+        <div>
+          <h2>시나리오 추출</h2>
+          <span id="extractorUrl">대상 URL이 여기에 표시됩니다</span>
+        </div>
+        <button id="closeExtractor" class="secondary" type="button">닫기</button>
+      </div>
+      <webview id="extractorWebview" partition="persist:autoqa-extractor" allowpopups></webview>
     </section>
 
     <section class="workspace">

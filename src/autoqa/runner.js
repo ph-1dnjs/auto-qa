@@ -291,7 +291,20 @@ async function executeStep(page, baseUrl, step, artifactsDir, scenarioId) {
 
 async function expectTextWithScroll(page, text) {
   const target = page.getByText(text, { exact: false }).first();
-  if (await target.isVisible({ timeout: 2500 }).catch(() => false)) return;
+  if (await target.isVisible({ timeout: 12000 }).catch(() => false)) return;
+
+  const overlayTarget = page.locator(
+    [
+      ".ant-modal",
+      ".ant-message",
+      ".ant-notification",
+      ".ant-popover",
+      "[role='dialog']",
+      "[role='alert']"
+    ].join(", "),
+    { hasText: text }
+  ).first();
+  if (await overlayTarget.isVisible({ timeout: 3000 }).catch(() => false)) return;
 
   await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {});
   const viewportHeight = await page.evaluate(() => window.innerHeight).catch(() => 900);
@@ -304,7 +317,7 @@ async function expectTextWithScroll(page, text) {
     await page.waitForTimeout(120);
   }
 
-  await target.waitFor({ timeout: 3000 });
+  await target.waitFor({ timeout: 12000 });
 }
 
 async function selectByLabelOrText(page, label, value) {
@@ -517,6 +530,8 @@ async function clickEnabledTarget(locator, text) {
     if (await clickAntSelectContainer(locator)) return;
     throw error;
   }
+  await locator.page().waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
+  await locator.page().waitForTimeout(300);
 }
 
 async function clickAntSelectContainer(locator) {

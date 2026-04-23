@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const fs = require("node:fs/promises");
 const fsSync = require("node:fs");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const packagedBrowserPath = app.isPackaged
   ? path.join(process.resourcesPath, "playwright-browsers")
@@ -17,8 +18,8 @@ const activeRuns = new Map();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1220,
-    height: 820,
+    width: 1680,
+    height: 1050,
     minWidth: 980,
     minHeight: 680,
     title: "AutoQA",
@@ -26,7 +27,8 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webviewTag: true
     }
   });
 
@@ -57,6 +59,18 @@ ipcMain.handle("scenario:open", async () => {
   const filePath = result.filePaths[0];
   const content = await fs.readFile(filePath, "utf8");
   return { filePath, content };
+});
+
+ipcMain.handle("scenario:extract-open", async (_event, payload) => {
+  const targetUrl = normalizeRecorderUrl(payload?.baseUrl);
+  return {
+    targetUrl,
+    preloadUrl: pathToFileURL(path.join(__dirname, "recorder-preload.js")).toString()
+  };
+});
+
+ipcMain.on("scenario:extracted", (_event, payload) => {
+  mainWindow?.webContents.send("scenario:extracted", payload);
 });
 
 ipcMain.handle("qa:run", async (_event, payload) => {
@@ -98,3 +112,10 @@ ipcMain.handle("report:open", async (_event, filePath) => {
   await shell.openPath(filePath);
   return true;
 });
+
+function normalizeRecorderUrl(url) {
+  const trimmed = String(url || "").trim();
+  if (!trimmed) throw new Error("시나리오 추출 대상 URL을 입력하세요.");
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
