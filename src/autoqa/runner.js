@@ -66,7 +66,9 @@ async function runAutoQa(options) {
 
   emitProgress("starting", "브라우저 준비 중");
   checkCancellation(options.cancellationToken);
-  const browser = await chromium.launch({ headless: options.headless !== false });
+  const browser = await launchChromiumForQa({
+    headless: options.headless !== false,
+  });
   if (options.cancellationToken) options.cancellationToken.browser = browser;
   const context = await browser.newContext({
     baseURL: baseUrl,
@@ -181,6 +183,51 @@ async function capturePagePreview(page) {
   } catch {
     return "";
   }
+}
+
+async function launchChromiumForQa(launchOptions) {
+  try {
+    return await chromium.launch(launchOptions);
+  } catch (error) {
+    if (!shouldFallbackToSystemChannel(error)) throw error;
+
+    const channels = getFallbackChannels();
+    const failures = [];
+    for (const channel of channels) {
+      try {
+        return await chromium.launch({
+          ...launchOptions,
+          channel,
+        });
+      } catch (channelError) {
+        failures.push(`${channel}: ${channelError.message}`);
+      }
+    }
+
+    const fallbackError = new Error([
+      "번들된 Playwright 브라우저를 찾지 못했고 시스템 브라우저 실행도 실패했습니다.",
+      ...failures,
+    ].join(" "));
+    fallbackError.cause = error;
+    throw fallbackError;
+  }
+}
+
+function shouldFallbackToSystemChannel(error) {
+  const message = String(error?.message || "");
+  return /Executable doesn't exist/i.test(message)
+    || /Please run the following command to download new browsers/i.test(message)
+    || /chrome-headless-shell/i.test(message);
+}
+
+function getFallbackChannels() {
+  if (process.platform === "win32") {
+    return ["msedge", "chrome"];
+  }
+  if (process.platform === "darwin") {
+    return ["chrome", "msedge"];
+  }
+  return ["chrome", "msedge"];
 }
 
 function checkCancellation(cancellationToken) {

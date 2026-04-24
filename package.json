@@ -1,6 +1,6 @@
 {
   "name": "autoqa-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "URL-based client QA automation desktop app for macOS and Windows.",
   "main": "src/main.js",
   "private": true,
@@ -8,12 +8,25 @@
     "start": "electron .",
     "test": "node --test tests/*.test.js",
     "install:browsers": "node scripts/install-browsers.js",
+    "release:prepare": "node scripts/prepare-release.js",
     "prebuild": "npm run install:browsers",
     "prebuild:mac": "npm run install:browsers",
     "prebuild:win": "npm run install:browsers",
+    "prebuild:win:x64": "npm run install:browsers",
+    "prebuild:win:arm64": "npm run install:browsers",
     "build": "electron-builder --mac --win",
     "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win"
+    "build:win": "electron-builder --win",
+    "build:win:x64": "electron-builder --win --x64",
+    "build:win:arm64": "electron-builder --win --arm64",
+    "build:all": "npm run build:mac && npm run build:win:x64 && npm run build:win:arm64",
+    "prepublish:mac": "npm run install:browsers",
+    "publish:mac": "electron-builder --mac --publish always",
+    "prepublish:win:x64": "npm run install:browsers",
+    "prepublish:win:arm64": "npm run install:browsers",
+    "publish:win:x64": "electron-builder --win --x64 --publish always",
+    "publish:win:arm64": "electron-builder --win --arm64 --publish always",
+    "publish:all": "npm run publish:mac && npm run publish:win:x64 && npm run publish:win:arm64"
   },
   "keywords": [
     "qa",
@@ -24,6 +37,7 @@
   "author": "",
   "license": "UNLICENSED",
   "dependencies": {
+    "electron-updater": "^6.8.3",
     "playwright": "^1.51.1"
   },
   "devDependencies": {
@@ -59,6 +73,24 @@
         "nsis",
         "portable"
       ]
-    }
+    },
+    "nsis": {
+      "artifactName": "${productName} Setup ${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName} ${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "artifactName": "${productName} ${version}-${arch}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ph-1dnjs",
+        "repo": "auto-qa",
+        "releaseType": "release"
+      }
+    ],
+    "generateUpdatesFilesForAllChannels": true
   }
 }

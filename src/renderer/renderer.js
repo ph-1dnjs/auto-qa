@@ -3,6 +3,11 @@ const elements = {
   workers: document.querySelector("#workers"),
   headless: document.querySelector("#headless"),
   failFast: document.querySelector("#failFast"),
+  updateBanner: document.querySelector("#updateBanner"),
+  updateBannerTitle: document.querySelector("#updateBannerTitle"),
+  updateBannerMessage: document.querySelector("#updateBannerMessage"),
+  checkForUpdates: document.querySelector("#checkForUpdates"),
+  installUpdate: document.querySelector("#installUpdate"),
   scenarioText: document.querySelector("#scenarioText"),
   scenarioFile: document.querySelector("#scenarioFile"),
   scenarioAccordion: document.querySelector("#scenarioAccordion"),
@@ -79,6 +84,10 @@ window.autoqa.onRecorderState((state) => {
   renderExtractorRecorderState(state);
 });
 
+window.autoqa.onAppUpdateState((state) => {
+  renderAppUpdateState(state);
+});
+
 elements.openScenario.addEventListener("click", async () => {
   const file = await window.autoqa.openScenario();
   if (!file) return;
@@ -89,6 +98,18 @@ elements.openScenario.addEventListener("click", async () => {
 
 elements.saveScenario.addEventListener("click", saveCurrentScenario);
 elements.saveExtractorScenario.addEventListener("click", saveCurrentScenario);
+elements.checkForUpdates.addEventListener("click", async () => {
+  elements.checkForUpdates.disabled = true;
+  try {
+    await window.autoqa.checkForAppUpdate();
+  } finally {
+    elements.checkForUpdates.disabled = false;
+  }
+});
+elements.installUpdate.addEventListener("click", async () => {
+  elements.installUpdate.disabled = true;
+  await window.autoqa.installAppUpdate();
+});
 
 elements.scenarioText.addEventListener("input", renderExtractorScenarioPreview);
 
@@ -291,6 +312,27 @@ function renderRunCounts({ total, passed, failed }) {
   elements.totalCount.textContent = String(total ?? 0);
   elements.passCount.textContent = String(passed ?? 0);
   elements.failCount.textContent = String(failed ?? 0);
+}
+
+function renderAppUpdateState(state = {}) {
+  if (state.type === "disabled") return;
+
+  const titleByType = {
+    checking: "업데이트 확인 중",
+    available: "새 업데이트 발견",
+    downloading: "업데이트 다운로드 중",
+    downloaded: "업데이트 준비 완료",
+    idle: "업데이트 상태",
+    error: "업데이트 오류",
+    installing: "업데이트 설치 중",
+  };
+
+  elements.updateBanner.classList.remove("hidden");
+  elements.updateBannerTitle.textContent = titleByType[state.type] || "업데이트";
+  elements.updateBannerMessage.textContent =
+    state.message || "업데이트 정보를 불러오는 중입니다.";
+  elements.installUpdate.classList.toggle("hidden", state.type !== "downloaded");
+  elements.installUpdate.disabled = false;
 }
 
 function initializeGuide() {

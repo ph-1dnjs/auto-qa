@@ -90,6 +90,44 @@ h2 {
   margin: 0 auto;
 }
 
+.update-banner {
+  max-width: 1180px;
+  margin: 0 auto 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #eef4ff;
+  box-shadow: var(--shadow);
+}
+
+.update-banner.hidden {
+  display: none;
+}
+
+.update-banner strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.update-banner p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.update-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .guide-modal {
   position: fixed;
   z-index: 60;

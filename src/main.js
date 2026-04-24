@@ -1,4 +1,5 @@
 const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const fs = require("node:fs/promises");
 const fsSync = require("node:fs");
 const path = require("node:path");
@@ -7,7 +8,7 @@ const { pathToFileURL } = require("node:url");
 const packagedBrowserPath = app.isPackaged
   ? path.join(process.resourcesPath, "playwright-browsers")
   : "";
-if (packagedBrowserPath && fsSync.existsSync(packagedBrowserPath)) {
+if (packagedBrowserPath && hasUsablePackagedBrowser(packagedBrowserPath)) {
   process.env.PLAYWRIGHT_BROWSERS_PATH = packagedBrowserPath;
 }
 
@@ -15,6 +16,7 @@ const { runAutoQa } = require("./autoqa/runner");
 
 let mainWindow;
 const activeRuns = new Map();
+let lastUpdateState = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -33,9 +35,15 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
+  mainWindow.webContents.once("did-finish-load", () => {
+    if (lastUpdateState) mainWindow?.webContents.send("app:update-state", lastUpdateState);
+  });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  initializeAutoUpdate();
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
@@ -82,6 +90,19 @@ ipcMain.handle("scenario:save", async (_event, payload) => {
     : `${result.filePath}.md`;
   await fs.writeFile(filePath, `${content}\n`, "utf8");
   return { filePath };
+});
+
+ipcMain.handle("app:update-check", async () => {
+  if (!canUseAutoUpdate()) return { enabled: false };
+  const result = await autoUpdater.checkForUpdates();
+  return { enabled: true, versionInfo: result?.updateInfo || null };
+});
+
+ipcMain.handle("app:update-install", async () => {
+  if (!canUseAutoUpdate()) return false;
+  setUpdateState({ type: "installing", message: "업데이트 설치를 위해 앱을 재시작합니다." });
+  setImmediate(() => autoUpdater.quitAndInstall());
+  return true;
 });
 
 ipcMain.handle("scenario:extract-open", async (_event, payload) => {
@@ -145,6 +166,131 @@ function normalizeRecorderUrl(url) {
   if (!trimmed) throw new Error("시나리오 추출 대상 URL을 입력하세요.");
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
+}
+
+function initializeAutoUpdate() {
+  if (!canUseAutoUpdate()) {
+    setUpdateState({ type: "disabled", message: "개발 모드에서는 자동 업데이트를 사용하지 않습니다." });
+    return;
+  }
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("checking-for-update", () => {
+    setUpdateState({ type: "checking", message: "업데이트를 확인하고 있습니다." });
+  });
+
+  autoUpdater.on("update-available", (info) => {
+    setUpdateState({
+      type: "available",
+      message: `새 버전 ${info.version} 다운로드를 시작합니다.`,
+      version: info.version,
+    });
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    setUpdateState({ type: "idle", message: "최신 버전을 사용 중입니다." });
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    setUpdateState({
+      type: "downloading",
+      message: `업데이트 다운로드 중 ${Math.round(progress.percent || 0)}%`,
+      progress: Math.round(progress.percent || 0),
+    });
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    setUpdateState({
+      type: "downloaded",
+      message: `새 버전 ${info.version} 다운로드 완료. 재시작하면 설치됩니다.`,
+      version: info.version,
+    });
+  });
+
+  autoUpdater.on("error", (error) => {
+    setUpdateState({
+      type: "error",
+      message: error?.message || "업데이트 확인 중 오류가 발생했습니다.",
+    });
+  });
+
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((error) => {
+      setUpdateState({
+        type: "error",
+        message: error?.message || "업데이트 확인 중 오류가 발생했습니다.",
+      });
+    });
+  }, 2500);
+}
+
+function canUseAutoUpdate() {
+  return app.isPackaged && !process.mas;
+}
+
+function setUpdateState(state) {
+  lastUpdateState = state;
+  mainWindow?.webContents.send("app:update-state", state);
+}
+
+function hasUsablePackagedBrowser(rootPath) {
+  if (!fsSync.existsSync(rootPath)) return false;
+  const entries = fsSync.readdirSync(rootPath, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  const candidates = getPackagedBrowserCandidates();
+  return entries.some((entry) =>
+    candidates.some((candidate) =>
+      entry.startsWith(candidate.prefix)
+      && fsSync.existsSync(path.join(rootPath, entry, ...candidate.executableParts)),
+    ),
+  );
+}
+
+function getPackagedBrowserCandidates() {
+  if (process.platform === "win32") {
+    const shellDir = process.arch === "arm64"
+      ? "chrome-headless-shell-win32-arm64"
+      : "chrome-headless-shell-win64";
+    const chromiumDir = process.arch === "arm64" ? "chrome-win" : "chrome-win";
+    return [
+      {
+        prefix: "chromium_headless_shell-",
+        executableParts: [shellDir, "chrome-headless-shell.exe"],
+      },
+      {
+        prefix: "chromium-",
+        executableParts: [chromiumDir, "chrome.exe"],
+      },
+    ];
+  }
+
+  if (process.platform === "darwin") {
+    return [
+      {
+        prefix: "chromium_headless_shell-",
+        executableParts: ["chrome-headless-shell-mac", "Chromium.app", "Contents", "MacOS", "Chromium"],
+      },
+      {
+        prefix: "chromium-",
+        executableParts: ["chrome-mac", "Chromium.app", "Contents", "MacOS", "Chromium"],
+      },
+    ];
+  }
+
+  return [
+    {
+      prefix: "chromium_headless_shell-",
+      executableParts: ["chrome-headless-shell-linux64", "chrome-headless-shell"],
+    },
+    {
+      prefix: "chromium-",
+      executableParts: ["chrome-linux", "chrome"],
+    },
+  ];
 }
 
 function extractScenarioTitle(content) {

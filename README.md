@@ -37,6 +37,22 @@ npm run build:win
 
 Windows 패키징은 Windows 환경에서 실행하는 것을 권장합니다.
 
+## 배포 / 자동 업데이트
+
+GitHub Releases를 통한 배포와 앱 내 자동 업데이트를 지원합니다.
+
+- mac 업로드: `npm run publish:mac`
+- Windows x64 업로드: `npm run publish:win:x64`
+- Windows arm64 업로드: `npm run publish:win:arm64`
+
+업로드 전에는 `GH_TOKEN` 환경 변수가 필요합니다.
+
+```bash
+export GH_TOKEN=your_github_token
+```
+
+자세한 순서는 [docs/release.md](/Users/una/github/auto-qa/docs/release.md)에서 확인할 수 있습니다.
+
 ## 시나리오 예시
 
 ```md
