@@ -1,5 +1,9 @@
 const elements = {
   baseUrl: document.querySelector("#baseUrl"),
+  toggleUrlHistory: document.querySelector("#toggleUrlHistory"),
+  urlHistoryMenu: document.querySelector("#urlHistoryMenu"),
+  urlHistoryList: document.querySelector("#urlHistoryList"),
+  clearUrlHistory: document.querySelector("#clearUrlHistory"),
   workers: document.querySelector("#workers"),
   headless: document.querySelector("#headless"),
   failFast: document.querySelector("#failFast"),
@@ -61,8 +65,12 @@ let progressTimer = null;
 let latestProgress = null;
 let extractorResizeObserver = null;
 let extractorFrameObserver = null;
+const urlHistoryStorageKey = "autoqa.baseUrlHistory";
+const maxUrlHistoryItems = 6;
 
 initializeGuide();
+renderUrlHistory();
+syncPreviewVisibility();
 
 window.autoqa.onProgress((progress) => {
   if (progress.runId !== activeRunId) return;
@@ -98,6 +106,20 @@ elements.openScenario.addEventListener("click", async () => {
 
 elements.saveScenario.addEventListener("click", saveCurrentScenario);
 elements.saveExtractorScenario.addEventListener("click", saveCurrentScenario);
+elements.toggleUrlHistory.addEventListener("click", () => {
+  const isOpen = !elements.urlHistoryMenu.classList.contains("hidden");
+  setUrlHistoryOpen(!isOpen);
+});
+elements.clearUrlHistory.addEventListener("click", () => {
+  window.localStorage.removeItem(urlHistoryStorageKey);
+  renderUrlHistory();
+});
+elements.baseUrl.addEventListener("focus", () => {
+  if (loadUrlHistory().length) setUrlHistoryOpen(true);
+});
+elements.headless.addEventListener("change", () => {
+  syncPreviewVisibility();
+});
 elements.checkForUpdates.addEventListener("click", async () => {
   elements.checkForUpdates.disabled = true;
   try {
@@ -123,6 +145,11 @@ elements.closeGuide.addEventListener("click", () => {
 
 elements.guideModal.addEventListener("click", (event) => {
   if (event.target === elements.guideModal) dismissGuide();
+});
+
+document.addEventListener("click", (event) => {
+  if (event.target.closest(".url-field")) return;
+  setUrlHistoryOpen(false);
 });
 
 elements.toggleScenarioAccordion.addEventListener("click", () => {
@@ -166,17 +193,19 @@ elements.runQa.addEventListener("click", async () => {
   activeRunId = `run-${Date.now()}`;
   runStartedAt = Date.now();
   const scenarioTotal = countScenarioRuns(elements.scenarioText.value);
+  const previewEnabled = elements.headless.checked;
   setRunning(true);
   setScenarioAccordionOpen(false);
   renderResults([]);
   renderRunCounts({ total: scenarioTotal, passed: 0, failed: 0 });
-  resetScreenPreview(scenarioTotal);
+  resetScreenPreview(scenarioTotal, previewEnabled);
   resetProgress(scenarioTotal);
   startProgressTicker();
   latestReportPath = null;
   elements.openReport.classList.add("hidden");
 
   try {
+    saveBaseUrlHistory(elements.baseUrl.value);
     const result = await window.autoqa.run({
       runId: activeRunId,
       baseUrl: elements.baseUrl.value,
@@ -344,6 +373,84 @@ function initializeGuide() {
   }
 }
 
+function loadUrlHistory() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(urlHistoryStorageKey) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveBaseUrlHistory(value) {
+  const normalized = normalizeUrlInput(value);
+  if (!normalized) return;
+  const next = [
+    { url: normalized, savedAt: Date.now() },
+    ...loadUrlHistory().filter((item) => item?.url !== normalized),
+  ].slice(0, maxUrlHistoryItems);
+  window.localStorage.setItem(urlHistoryStorageKey, JSON.stringify(next));
+  renderUrlHistory();
+}
+
+function normalizeUrlInput(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+}
+
+function setUrlHistoryOpen(isOpen) {
+  elements.urlHistoryMenu.classList.toggle("hidden", !isOpen);
+}
+
+function renderUrlHistory() {
+  const items = loadUrlHistory();
+  if (!items.length) {
+    elements.urlHistoryList.innerHTML = `
+      <div class="url-history-empty">아직 저장된 URL 기록이 없습니다. 한 번 실행하면 다음부터 여기서 빠르게 다시 시작할 수 있습니다.</div>
+    `;
+    elements.clearUrlHistory.disabled = true;
+    return;
+  }
+
+  elements.clearUrlHistory.disabled = false;
+  elements.urlHistoryList.innerHTML = items
+    .map((item, index) => `
+      <div class="url-history-item">
+        <div class="url-history-meta">
+          <strong>${escapeHtml(item.url)}</strong>
+          <span>${formatHistoryDate(item.savedAt)}에 저장됨</span>
+        </div>
+        <button class="secondary compact-button url-history-apply" type="button" data-history-index="${index}">퀵 스타트</button>
+      </div>
+    `)
+    .join("");
+
+  elements.urlHistoryList.querySelectorAll("[data-history-index]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const selected = items[Number(button.dataset.historyIndex)];
+      if (!selected?.url) return;
+      elements.baseUrl.value = selected.url;
+      setUrlHistoryOpen(false);
+      elements.baseUrl.focus();
+    });
+  });
+}
+
+function formatHistoryDate(value) {
+  if (!value) return "방금";
+  try {
+    return new Intl.DateTimeFormat("ko-KR", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(value));
+  } catch {
+    return "최근";
+  }
+}
+
 function setGuideOpen(isOpen) {
   elements.guideModal.classList.toggle("hidden", !isOpen);
 }
@@ -358,8 +465,12 @@ function setScenarioAccordionOpen(isOpen) {
   elements.toggleScenarioAccordion.textContent = isOpen ? "접기" : "펼치기";
 }
 
-function resetScreenPreview(scenarioTotal = 0) {
-  elements.progressPreview.classList.remove("hidden");
+function syncPreviewVisibility() {
+  elements.progressPreview.classList.toggle("hidden", !elements.headless.checked);
+}
+
+function resetScreenPreview(scenarioTotal = 0, previewEnabled = true) {
+  elements.progressPreview.classList.toggle("hidden", !previewEnabled);
   elements.progressPreviewSummary.textContent = `전체 ${scenarioTotal}개 / 통과 0 / 실패 0`;
   elements.progressPreviewImage.removeAttribute("src");
   elements.progressPreviewImage.classList.remove("visible");
@@ -369,6 +480,7 @@ function resetScreenPreview(scenarioTotal = 0) {
 }
 
 function renderScreenPreview(progress) {
+  if (!elements.headless.checked) return;
   if (!progress.previewImage) return;
   elements.progressPreview.classList.remove("hidden");
   elements.progressPreviewImage.src = progress.previewImage;

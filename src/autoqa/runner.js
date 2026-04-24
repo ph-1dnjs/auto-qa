@@ -55,6 +55,7 @@ async function runAutoQa(options) {
   };
 
   const emitPagePreview = async (page, currentTitle, extra = {}) => {
+    if (options.headless === false) return;
     const previewImage = await capturePagePreview(page);
     if (!previewImage) return;
     emitProgress("preview", currentTitle, {
@@ -67,7 +68,7 @@ async function runAutoQa(options) {
   emitProgress("starting", "브라우저 준비 중");
   checkCancellation(options.cancellationToken);
   const browser = await launchChromiumForQa({
-    headless: options.headless !== false,
+    headless: true,
   });
   if (options.cancellationToken) options.cancellationToken.browser = browser;
   const context = await browser.newContext({

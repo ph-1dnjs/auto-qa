@@ -35,7 +35,17 @@
     <section class="run-panel">
       <label class="field url-field">
         <span>테스트 대상 URL</span>
-        <input id="baseUrl" type="url" placeholder="https://example.com" autocomplete="url">
+        <div class="url-input-wrap">
+          <input id="baseUrl" type="url" placeholder="https://example.com" autocomplete="url">
+          <button id="toggleUrlHistory" class="history-trigger" type="button" aria-label="이전 기록 불러오기">이전 기록 불러오기</button>
+        </div>
+        <div id="urlHistoryMenu" class="url-history-menu hidden" aria-label="이전 URL 기록">
+          <div class="url-history-head">
+            <strong>이전 기록</strong>
+            <button id="clearUrlHistory" class="ghost compact-button" type="button">전체 삭제</button>
+          </div>
+          <div id="urlHistoryList" class="url-history-list"></div>
+        </div>
       </label>
       <label class="field compact">
         <span>워커</span>
@@ -110,12 +120,7 @@
           <button id="toggleScenarioAccordion" class="secondary compact-button" type="button">접기</button>
         </div>
         <div id="scenarioAccordion" class="scenario-accordion open">
-          <textarea id="scenarioText" spellcheck="false"># 시나리오: 홈 페이지 주요 문구 확인
-priority: Critical
-tags: [smoke]
-
-Given / 페이지로 이동한다
-Then 로그인 텍스트가 보인다</textarea>
+          <textarea id="scenarioText" spellcheck="false" placeholder="시나리오 입력 후 QA를 실행해보세요."></textarea>
         </div>
         <section id="progressPreview" class="progress-preview hidden" aria-live="polite">
           <div class="progress-preview-head">
@@ -174,7 +179,7 @@ Then 로그인 텍스트가 보인다</textarea>
         <div class="guide-body">
           <article class="guide-step">
             <strong>1. 테스트 대상 URL 입력</strong>
-            <p>`https://...` 형식의 서비스 URL을 입력한 뒤 필요하면 워커 수와 Headless 옵션을 조정합니다.</p>
+            <p>`https://...` 형식의 서비스 URL을 입력합니다. 오른쪽 `이전 기록 불러오기` 버튼을 누르면 최근 실행했던 URL 목록이 열리고, 원하는 항목을 눌러 바로 불러올 수 있습니다.</p>
           </article>
           <article class="guide-step">
             <strong>2. 시나리오 준비</strong>
@@ -182,14 +187,18 @@ Then 로그인 텍스트가 보인다</textarea>
           </article>
           <article class="guide-step">
             <strong>3. QA 실행</strong>
-            <p>`QA 실행`을 누르면 전체 시나리오 수, 통과/실패 수, 진행률이 즉시 갱신되고 아래 Preview 영역에서 실제 테스트 화면을 볼 수 있습니다.</p>
+            <p>`QA 실행`을 누르면 전체 시나리오 수, 통과/실패 수, 진행률이 즉시 갱신되고 아래 Preview 영역에서 실제 테스트 화면을 볼 수 있습니다. 실행한 URL은 이후 빠르게 다시 사용할 수 있도록 최근 기록에 자동 저장됩니다.</p>
           </article>
           <article class="guide-step">
-            <strong>4. 결과 확인</strong>
+            <strong>4. 실행 옵션 이해하기</strong>
+            <p>`워커`는 동시에 처리할 실행 단위 수입니다. 숫자를 높이면 여러 시나리오를 더 빠르게 소화할 수 있지만, 대상 서비스와 PC 성능에 따라 브라우저 부하가 커질 수 있으니 처음에는 `1` 또는 `2`로 시작하는 편이 안정적입니다. `Headless`를 켜면 브라우저 창을 띄우지 않고 백그라운드에서 실행해 더 조용하고 빠르게 테스트할 수 있고, 끄면 실제 화면 흐름을 직접 보면서 점검하기 좋습니다. `Fail-fast`를 켜면 첫 실패가 발생했을 때 남은 실행을 빠르게 중단해 원인 확인에 집중할 수 있고, 끄면 실패가 있어도 끝까지 돌며 전체 상태를 한 번에 확인할 수 있습니다.</p>
+          </article>
+          <article class="guide-step">
+            <strong>5. 결과 확인</strong>
             <p>오른쪽 실행 결과 패널에서 시나리오별 상태를 확인하고, 완료 후 `HTML 리포트 열기`로 상세 리포트를 확인합니다.</p>
           </article>
           <article class="guide-step">
-            <strong>5. 추천 시작 순서</strong>
+            <strong>6. 추천 시작 순서</strong>
             <p>처음에는 `baseUrl 입력 -> 시나리오 추출 -> 시나리오 저장 -> QA 실행` 순서로 사용하면 가장 빠르게 익숙해집니다.</p>
           </article>
         </div>
