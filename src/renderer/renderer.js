@@ -13,6 +13,9 @@ const elements = {
   progressPreviewEmpty: document.querySelector("#progressPreviewEmpty"),
   progressPreviewTitle: document.querySelector("#progressPreviewTitle"),
   progressPreviewUrl: document.querySelector("#progressPreviewUrl"),
+  guideModal: document.querySelector("#guideModal"),
+  openGuide: document.querySelector("#openGuide"),
+  closeGuide: document.querySelector("#closeGuide"),
   openScenario: document.querySelector("#openScenario"),
   saveScenario: document.querySelector("#saveScenario"),
   extractScenario: document.querySelector("#extractScenario"),
@@ -54,6 +57,8 @@ let latestProgress = null;
 let extractorResizeObserver = null;
 let extractorFrameObserver = null;
 
+initializeGuide();
+
 window.autoqa.onProgress((progress) => {
   if (progress.runId !== activeRunId) return;
   latestProgress = progress;
@@ -86,6 +91,18 @@ elements.saveScenario.addEventListener("click", saveCurrentScenario);
 elements.saveExtractorScenario.addEventListener("click", saveCurrentScenario);
 
 elements.scenarioText.addEventListener("input", renderExtractorScenarioPreview);
+
+elements.openGuide.addEventListener("click", () => {
+  setGuideOpen(true);
+});
+
+elements.closeGuide.addEventListener("click", () => {
+  dismissGuide();
+});
+
+elements.guideModal.addEventListener("click", (event) => {
+  if (event.target === elements.guideModal) dismissGuide();
+});
 
 elements.toggleScenarioAccordion.addEventListener("click", () => {
   setScenarioAccordionOpen(!elements.scenarioAccordion.classList.contains("open"));
@@ -274,6 +291,24 @@ function renderRunCounts({ total, passed, failed }) {
   elements.totalCount.textContent = String(total ?? 0);
   elements.passCount.textContent = String(passed ?? 0);
   elements.failCount.textContent = String(failed ?? 0);
+}
+
+function initializeGuide() {
+  const guideSeen = window.localStorage.getItem("autoqa.guideSeen");
+  if (!guideSeen) {
+    window.requestAnimationFrame(() => {
+      setGuideOpen(true);
+    });
+  }
+}
+
+function setGuideOpen(isOpen) {
+  elements.guideModal.classList.toggle("hidden", !isOpen);
+}
+
+function dismissGuide() {
+  window.localStorage.setItem("autoqa.guideSeen", "true");
+  setGuideOpen(false);
 }
 
 function setScenarioAccordionOpen(isOpen) {
