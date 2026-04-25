@@ -13,10 +13,13 @@ if (packagedBrowserPath && hasUsablePackagedBrowser(packagedBrowserPath)) {
 }
 
 const { runAutoQa } = require("./autoqa/runner");
+const { analyzeImpact, buildFeatureMap, prepareScenarios } = require("./autoqa/planner");
+const { appendHistory, loadHistory, summarizeHistory } = require("./autoqa/history");
 
 let mainWindow;
 const activeRuns = new Map();
 let lastUpdateState = null;
+const historyFilePath = () => path.join(app.getPath("userData"), "history", "runs.json");
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -25,7 +28,13 @@ function createWindow() {
     minWidth: 980,
     minHeight: 680,
     title: "AutoQA",
-    backgroundColor: "#f5f7fb",
+    backgroundColor: "#08102f",
+    ...(process.platform === "darwin"
+      ? {
+        titleBarStyle: "hiddenInset",
+        trafficLightPosition: { x: 16, y: 14 },
+      }
+      : {}),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -92,6 +101,21 @@ ipcMain.handle("scenario:save", async (_event, payload) => {
   return { filePath };
 });
 
+ipcMain.handle("scenario:insights", async (_event, payload) => {
+  const scenarios = prepareScenarios(payload?.scenarioText || "");
+  const impacted = analyzeImpact(scenarios, payload?.changedText || "");
+  return {
+    scenarioCount: scenarios.length,
+    features: buildFeatureMap(scenarios),
+    impacted
+  };
+});
+
+ipcMain.handle("qa:history", async () => {
+  const history = await loadHistory(historyFilePath());
+  return summarizeHistory(history);
+});
+
 ipcMain.handle("app:update-check", async () => {
   if (!canUseAutoUpdate()) return { enabled: false };
   const result = await autoUpdater.checkForUpdates();
@@ -140,6 +164,8 @@ ipcMain.handle("qa:run", async (_event, payload) => {
         mainWindow?.webContents.send("qa:progress", { runId, ...progress });
       }
     });
+
+    await appendHistory(historyFilePath(), result);
 
     return result;
   } finally {

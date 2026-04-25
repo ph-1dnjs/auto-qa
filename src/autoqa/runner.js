@@ -1,6 +1,6 @@
 const path = require("node:path");
 const { chromium } = require("playwright");
-const { parseScenarioText } = require("./parser");
+const { filterScenarios, prepareScenarios } = require("./planner");
 const { writeReports } = require("./report");
 
 function normalizeUrl(url) {
@@ -19,14 +19,15 @@ function resolveTarget(baseUrl, target) {
 }
 
 async function runAutoQa(options) {
-  const baseUrl = normalizeUrl(options.baseUrl);
   const startedAt = new Date().toISOString();
   const started = Date.now();
-  const scenarios = buildRunList(options.scenarioText);
-  const totalUnits = scenarios.length + 1;
+  const scenarios = buildRunList(options.scenarioText, options.selection);
+  const environments = normalizeEnvironments(options.baseUrl, options.environments)
+    .map((environment) => ({ ...environment, scenarioCount: scenarios.length }));
+  const totalUnits = environments.reduce((sum, environment) => sum + environment.scenarioCount + 1, 0);
   let completedUnits = 0;
   const scenarioProgress = {
-    total: scenarios.length,
+    total: environments.reduce((sum, environment) => sum + environment.scenarioCount, 0),
     completed: 0,
     passed: 0,
     failed: 0
@@ -65,14 +66,65 @@ async function runAutoQa(options) {
     });
   };
 
-  emitProgress("starting", "브라우저 준비 중");
-  checkCancellation(options.cancellationToken);
+  const results = [];
+  const environmentSummaries = [];
+
+  for (const environment of environments) {
+    emitProgress("starting", `${environment.name} 환경 준비 중`);
+    const environmentResult = await runEnvironmentQa({
+      ...options,
+      baseUrl: environment.baseUrl,
+      environment,
+      scenarios,
+      onPreview: (page, currentTitle, extra = {}) =>
+        emitPagePreview(page, `[${environment.name}] ${currentTitle}`, {
+          environmentName: environment.name,
+          ...extra
+        }),
+      onUnitComplete: (result) => {
+        completedUnits += 1;
+        if (result?.kind === "scenario") {
+          updateScenarioProgress(scenarioProgress, result.payload);
+        }
+      },
+      onProgressTitle: (title) => emitProgress("running", `[${environment.name}] ${title}`),
+    });
+
+    results.push(...environmentResult.results);
+    environmentSummaries.push(environmentResult.summary);
+  }
+
+  const durationMs = Date.now() - started;
+  const summary = {
+    runId: options.runId || `run-${Date.now()}`,
+    baseUrl: environments[0]?.baseUrl || "",
+    startedAt,
+    durationMs,
+    total: results.length,
+    passed: results.filter((item) => item.status === "passed").length,
+    failed: results.filter((item) => item.status === "failed").length,
+    scenarioTotal: scenarioProgress.total,
+    scenarioPassed: scenarioProgress.passed,
+    scenarioFailed: scenarioProgress.failed,
+    environmentCount: environmentSummaries.length,
+    environments: environmentSummaries
+  };
+
+  const reports = await writeReports({ summary, results, artifactsDir: options.artifactsDir });
+  completedUnits = totalUnits;
+  emitProgress("completed", "QA 완료");
+  return { summary, results, reports };
+}
+
+async function runEnvironmentQa(options) {
+  const started = Date.now();
   const browser = await launchChromiumForQa({
     headless: true,
   });
   if (options.cancellationToken) options.cancellationToken.browser = browser;
+
   const context = await browser.newContext({
-    baseURL: baseUrl,
+    baseURL: options.baseUrl,
     viewport: { width: 1920, height: 1400 },
     ignoreHTTPSErrors: Boolean(options.ignoreHTTPSErrors)
   });
@@ -80,38 +132,51 @@ async function runAutoQa(options) {
   const results = [];
   try {
     checkCancellation(options.cancellationToken);
-    emitProgress("running", "기본 URL 상태 점검");
-    results.push(await runHealthCheck(context, baseUrl, options.artifactsDir, emitPagePreview));
-    completedUnits += 1;
-    emitProgress("running", "기본 URL 상태 점검 완료");
+    options.onProgressTitle?.("기본 URL 상태 점검");
+    const healthResult = await runHealthCheck(
+      context,
+      options.baseUrl,
+      options.artifactsDir,
+      options.onPreview,
+      options.environment
+    );
+    results.push(healthResult);
+    options.onUnitComplete?.({ kind: "health", payload: healthResult });
+    options.onProgressTitle?.("기본 URL 상태 점검 완료");
 
     if (options.failFast) {
-      for (const scenario of scenarios) {
+      for (const scenario of options.scenarios) {
         checkCancellation(options.cancellationToken);
-        emitProgress("running", scenario.title);
-        const result = await runScenario(context, baseUrl, scenario, options.artifactsDir, emitPagePreview);
+        options.onProgressTitle?.(scenario.title);
+        const result = await runScenario(
+          context,
+          options.baseUrl,
+          scenario,
+          options.artifactsDir,
+          options.onPreview,
+          options.environment
+        );
         results.push(result);
-        completedUnits += 1;
-        updateScenarioProgress(scenarioProgress, result);
-        emitProgress("running", `${scenario.title} 완료`);
-        if (results.at(-1).status === "failed") break;
+        options.onUnitComplete?.({ kind: "scenario", payload: result });
+        options.onProgressTitle?.(`${scenario.title} 완료`);
+        if (result.status === "failed") break;
       }
       checkCancellation(options.cancellationToken);
     } else {
       results.push(
         ...(await runScenarioQueue({
           context,
-          baseUrl,
-          scenarios,
+          baseUrl: options.baseUrl,
+          scenarios: options.scenarios,
           artifactsDir: options.artifactsDir,
           workers: options.workers,
           cancellationToken: options.cancellationToken,
-          onPreview: emitPagePreview,
-          onScenarioStart: (scenario) => emitProgress("running", scenario.title),
+          onPreview: options.onPreview,
+          environment: options.environment,
+          onScenarioStart: (scenario) => options.onProgressTitle?.(scenario.title),
           onScenarioDone: (scenario, result) => {
-            completedUnits += 1;
-            updateScenarioProgress(scenarioProgress, result);
-            emitProgress("running", `${scenario.title} 완료`);
+            options.onUnitComplete?.({ kind: "scenario", payload: result });
+            options.onProgressTitle?.(`${scenario.title} 완료`);
           }
         }))
       );
@@ -123,23 +188,18 @@ async function runAutoQa(options) {
     if (options.cancellationToken) options.cancellationToken.browser = null;
   }
 
-  const durationMs = Date.now() - started;
-  const summary = {
-    baseUrl,
-    startedAt,
-    durationMs,
-    total: results.length,
-    passed: results.filter((item) => item.status === "passed").length,
-    failed: results.filter((item) => item.status === "failed").length,
-    scenarioTotal: scenarioProgress.total,
-    scenarioPassed: scenarioProgress.passed,
-    scenarioFailed: scenarioProgress.failed
+  return {
+    summary: {
+      id: options.environment.id,
+      name: options.environment.name,
+      baseUrl: options.baseUrl,
+      total: results.length,
+      passed: results.filter((item) => item.status === "passed").length,
+      failed: results.filter((item) => item.status === "failed").length,
+      durationMs: Date.now() - started
+    },
+    results
   };
-
-  const reports = await writeReports({ summary, results, artifactsDir: options.artifactsDir });
-  completedUnits = totalUnits;
-  emitProgress("completed", "QA 완료");
-  return { summary, results, reports };
 }
 
 async function runScenarioQueue({
@@ -150,6 +210,7 @@ async function runScenarioQueue({
   workers,
   cancellationToken,
   onPreview,
+  environment,
   onScenarioStart,
   onScenarioDone
 }) {
@@ -163,7 +224,14 @@ async function runScenarioQueue({
       const index = cursor;
       cursor += 1;
       onScenarioStart?.(scenarios[index]);
-      results[index] = await runScenario(context, baseUrl, scenarios[index], artifactsDir, onPreview);
+      results[index] = await runScenario(
+        context,
+        baseUrl,
+        scenarios[index],
+        artifactsDir,
+        onPreview,
+        environment
+      );
       onScenarioDone?.(scenarios[index], results[index]);
     }
   }
@@ -258,8 +326,13 @@ function formatStepPreview(step) {
   return `${step.action || "단계"} 실행`;
 }
 
-function buildRunList(scenarioText) {
-  const parsed = parseScenarioText(scenarioText);
+function buildRunList(scenarioText, selection) {
+  const parsed = prepareScenarios(scenarioText);
+  const filtered = filterScenarios(parsed, selection);
+  if (filtered.length > 0) return filtered;
+  if (parsed.length > 0 && selection && Object.keys(selection).length > 0) {
+    throw new Error("선택한 Feature 또는 Suite에 해당하는 시나리오가 없습니다.");
+  }
   if (parsed.length > 0) return parsed;
 
   return [
@@ -268,12 +341,39 @@ function buildRunList(scenarioText) {
       title: "홈 페이지 로딩 확인",
       priority: "Critical",
       tags: ["smoke"],
+      featurePath: "공통",
+      suite: "smoke",
       steps: [{ action: "goto", target: "/" }]
     }
   ];
 }
 
-async function runHealthCheck(context, baseUrl, artifactsDir, onPreview) {
+function normalizeEnvironments(baseUrl, environments) {
+  const provided = Array.isArray(environments) ? environments : [];
+  const normalized = provided
+    .map((environment, index) => ({
+      id: environment.id || `env-${index + 1}`,
+      name: String(environment.name || `환경 ${index + 1}`).trim(),
+      baseUrl: normalizeUrl(environment.baseUrl)
+    }))
+    .filter((environment) => environment.baseUrl);
+
+  if (normalized.length > 0) {
+    return normalized.map((environment) => ({
+      ...environment,
+      scenarioCount: 0
+    }));
+  }
+
+  return [{
+    id: "default",
+    name: "기본",
+    baseUrl: normalizeUrl(baseUrl),
+    scenarioCount: 0
+  }];
+}
+
+async function runHealthCheck(context, baseUrl, artifactsDir, onPreview, environment) {
   const started = Date.now();
   const page = await context.newPage();
   const consoleErrors = [];
@@ -309,6 +409,10 @@ async function runHealthCheck(context, baseUrl, artifactsDir, onPreview) {
     return {
       id: "health-check",
       title: "기본 URL 상태 점검",
+      environmentId: environment?.id || "default",
+      environmentName: environment?.name || "기본",
+      featurePath: "공통",
+      suite: "smoke",
       status: "passed",
       durationMs: Date.now() - started
     };
@@ -319,6 +423,10 @@ async function runHealthCheck(context, baseUrl, artifactsDir, onPreview) {
     return {
       id: "health-check",
       title: "기본 URL 상태 점검",
+      environmentId: environment?.id || "default",
+      environmentName: environment?.name || "기본",
+      featurePath: "공통",
+      suite: "smoke",
       status: "failed",
       durationMs: Date.now() - started,
       error: error.message,
@@ -329,7 +437,7 @@ async function runHealthCheck(context, baseUrl, artifactsDir, onPreview) {
   }
 }
 
-async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview) {
+async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview, environment) {
   const started = Date.now();
   const page = await context.newPage();
 
@@ -347,6 +455,10 @@ async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview) 
       title: scenario.title,
       priority: scenario.priority,
       tags: scenario.tags,
+      featurePath: scenario.featurePath,
+      suite: scenario.suite,
+      environmentId: environment?.id || "default",
+      environmentName: environment?.name || "기본",
       status: "passed",
       durationMs: Date.now() - started
     };
@@ -360,6 +472,10 @@ async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview) 
       title: scenario.title,
       priority: scenario.priority,
       tags: scenario.tags,
+      featurePath: scenario.featurePath,
+      suite: scenario.suite,
+      environmentId: environment?.id || "default",
+      environmentName: environment?.name || "기본",
       status: "failed",
       durationMs: Date.now() - started,
       error: error.message,

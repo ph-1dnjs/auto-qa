@@ -8,58 +8,199 @@
 </head>
 <body>
   <main class="app">
-    <section class="hero">
-      <div>
-        <p class="eyebrow">URL 기반 클라이언트 QA 자동화</p>
-        <h1>AutoQA</h1>
-      </div>
-      <div class="hero-actions">
-        <button id="openGuide" class="secondary" type="button">사용 가이드</button>
-        <button id="extractScenario" class="ghost" type="button">시나리오 추출</button>
-        <button id="openScenario" class="ghost" type="button">시나리오 불러오기</button>
-        <button id="saveScenario" class="ghost" type="button">시나리오 저장</button>
-      </div>
-    </section>
+    <header class="global-nav-shell">
+      <nav class="global-nav" aria-label="주요 메뉴">
+        <button id="navScenarioPage" class="nav-pill" type="button">시나리오 생성</button>
+        <button id="navQaPage" class="nav-pill primary-nav" type="button">QA 실행</button>
+      </nav>
+    </header>
 
-    <section id="updateBanner" class="update-banner hidden" aria-live="polite">
-      <div>
-        <strong id="updateBannerTitle">업데이트</strong>
-        <p id="updateBannerMessage">최신 버전을 확인하고 있습니다.</p>
-      </div>
-      <div class="update-banner-actions">
-        <button id="checkForUpdates" class="secondary compact-button" type="button">업데이트 확인</button>
-        <button id="installUpdate" class="primary compact-button hidden" type="button">지금 설치</button>
-      </div>
-    </section>
-
-    <section class="run-panel">
-      <label class="field url-field">
-        <span>테스트 대상 URL</span>
-        <div class="url-input-wrap">
-          <input id="baseUrl" type="url" placeholder="https://example.com" autocomplete="url">
-          <button id="toggleUrlHistory" class="history-trigger" type="button" aria-label="이전 기록 불러오기">이전 기록 불러오기</button>
+    <section id="homePage" class="page page-home">
+      <section class="hero-card">
+        <div class="hero-stars" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
         </div>
-        <div id="urlHistoryMenu" class="url-history-menu hidden" aria-label="이전 URL 기록">
-          <div class="url-history-head">
-            <strong>이전 기록</strong>
-            <button id="clearUrlHistory" class="ghost compact-button" type="button">전체 삭제</button>
+        <div class="hero-copy">
+          <p class="eyebrow">URL 기반 클라이언트 QA 자동화</p>
+          <h1>AutoQA</h1>
+          <p class="hero-description">
+            PM, Designer, Developer, QA가 같은 흐름 안에서 시나리오를 작성하고
+            검토하며 실행할 수 있는 통합 QA 워크스페이스입니다.
+          </p>
+          <div class="hero-inline-actions">
+            <button id="homeScenarioCta" class="secondary compact-button" type="button">시나리오 생성으로 이동</button>
+            <button id="homeQaCta" class="primary compact-button" type="button">QA 실행으로 이동</button>
+            <button id="openGuide" class="ghost compact-button" type="button">가이드</button>
           </div>
-          <div id="urlHistoryList" class="url-history-list"></div>
         </div>
-      </label>
-      <label class="field compact">
-        <span>워커</span>
-        <input id="workers" type="number" min="1" max="16" value="1">
-      </label>
-      <label class="toggle">
-        <input id="headless" type="checkbox" checked>
-        <span>Headless</span>
-      </label>
-      <label class="toggle">
-        <input id="failFast" type="checkbox">
-        <span>Fail-fast</span>
-      </label>
-      <button id="runQa" class="primary" type="button">QA 실행</button>
+      </section>
+
+      <section class="history-panel">
+        <div class="section-head">
+          <h2>QA 히스토리 & 인사이트</h2>
+          <span id="historySummary">아직 저장된 실행 이력이 없습니다.</span>
+        </div>
+        <div class="history-grid">
+          <div class="metrics metrics-wide">
+            <div><span>누적 실행</span><strong id="historyRunCount">0</strong></div>
+            <div><span>평균 Pass Rate</span><strong id="historyPassRate">0%</strong></div>
+            <div><span>회귀 감지</span><strong id="historyRegressionCount">0</strong></div>
+          </div>
+          <article class="history-card">
+            <h3>최근 실행</h3>
+            <div id="historyRecentRuns" class="history-list"></div>
+          </article>
+          <article class="history-card">
+            <h3>Hot Spot</h3>
+            <div id="historyHotspots" class="history-list"></div>
+          </article>
+        </div>
+      </section>
+    </section>
+
+    <section id="scenarioPage" class="page hidden">
+      <section class="page-card builder-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow small">Scenario Builder</p>
+            <h2>시나리오 생성</h2>
+          </div>
+          <button id="backFromScenario" class="ghost compact-button" type="button">메인으로</button>
+        </div>
+        <div class="builder-toolbar">
+          <label class="field grow">
+            <span>대상 URL</span>
+            <input id="scenarioBaseUrl" type="url" placeholder="https://example.com" autocomplete="url">
+          </label>
+          <div class="builder-actions">
+            <button id="extractScenario" class="secondary" type="button">시나리오 추출</button>
+            <button id="openScenario" class="ghost" type="button">불러오기</button>
+            <button id="saveScenario" class="primary" type="button">저장</button>
+          </div>
+        </div>
+        <div class="editor-wrap standalone">
+          <div class="section-head">
+            <h2>QA 시나리오</h2>
+            <span id="scenarioFile">직접 작성 또는 Markdown/JSON 파일 불러오기</span>
+            <button id="toggleScenarioAccordion" class="secondary compact-button" type="button">접기</button>
+          </div>
+          <div id="scenarioAccordion" class="scenario-accordion open">
+            <textarea id="scenarioText" spellcheck="false" placeholder="시나리오를 직접 편집하거나 화면에서 추출해보세요."></textarea>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section id="qaPage" class="page hidden">
+      <section id="updateBanner" class="update-banner hidden" aria-live="polite">
+        <div>
+          <strong id="updateBannerTitle">업데이트</strong>
+          <p id="updateBannerMessage">최신 버전을 확인하고 있습니다.</p>
+        </div>
+        <div class="update-banner-actions">
+          <button id="checkForUpdates" class="secondary compact-button" type="button">업데이트 확인</button>
+          <button id="installUpdate" class="primary compact-button hidden" type="button">지금 설치</button>
+        </div>
+      </section>
+
+      <section class="page-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow small">Execution Console</p>
+            <h2>QA 실행</h2>
+          </div>
+          <button id="backFromQa" class="ghost compact-button" type="button">메인으로</button>
+        </div>
+        <section class="run-panel">
+          <label class="field url-field grow">
+            <span>테스트 대상 URL</span>
+            <div class="url-input-wrap">
+              <input id="qaBaseUrl" type="url" placeholder="https://example.com" autocomplete="url">
+              <button id="toggleUrlHistory" class="history-trigger" type="button" aria-label="이전 기록 불러오기">이전 기록 불러오기</button>
+            </div>
+            <div id="urlHistoryMenu" class="url-history-menu hidden" aria-label="이전 URL 기록">
+              <div class="url-history-head">
+                <strong>이전 기록</strong>
+                <button id="clearUrlHistory" class="ghost compact-button" type="button">전체 삭제</button>
+              </div>
+              <div id="urlHistoryList" class="url-history-list"></div>
+            </div>
+          </label>
+          <label class="field compact">
+            <span>워커</span>
+            <input id="workers" type="number" min="1" max="16" value="1">
+          </label>
+          <label class="toggle">
+            <input id="headless" type="checkbox" checked>
+            <span>Headless</span>
+          </label>
+          <label class="toggle">
+            <input id="failFast" type="checkbox">
+            <span>Fail-fast</span>
+          </label>
+          <button id="runQa" class="primary" type="button">QA 실행</button>
+        </section>
+
+        <section class="workspace">
+          <div class="editor-wrap">
+            <div class="section-head">
+              <h2>실행 대상 시나리오</h2>
+              <span>불러온 시나리오를 확인한 뒤 실행할 수 있습니다.</span>
+              <button id="openScenarioQa" class="secondary compact-button" type="button">시나리오 불러오기</button>
+            </div>
+            <div class="scenario-accordion open">
+              <textarea id="qaScenarioText" spellcheck="false" placeholder="시나리오 생성 페이지에서 작성한 내용을 붙여넣거나, 파일을 불러오세요."></textarea>
+            </div>
+            <section id="progressPreview" class="progress-preview hidden" aria-live="polite">
+              <div class="progress-preview-head">
+                <h2>테스트 화면 Preview</h2>
+                <span id="progressPreviewSummary">대기 중</span>
+              </div>
+              <div class="progress-preview-stage">
+                <img id="progressPreviewImage" alt="실시간 QA 테스트 화면">
+                <div id="progressPreviewEmpty" class="progress-preview-empty">테스트 화면을 기다리는 중입니다.</div>
+              </div>
+              <div class="progress-preview-caption">
+                <strong id="progressPreviewTitle">QA 실행 준비</strong>
+                <span id="progressPreviewUrl">-</span>
+              </div>
+            </section>
+          </div>
+
+          <aside class="results">
+            <div class="section-head">
+              <h2>실행 결과</h2>
+              <span id="statusText">대기 중</span>
+            </div>
+            <div class="metrics">
+              <div><span>전체</span><strong id="totalCount">0</strong></div>
+              <div><span>통과</span><strong id="passCount">0</strong></div>
+              <div><span>실패</span><strong id="failCount">0</strong></div>
+            </div>
+            <div class="progress-wrap">
+              <div class="progress-meta">
+                <span id="progressPhase">대기 중</span>
+                <strong id="progressPercent">0%</strong>
+              </div>
+              <div class="progress-bar" aria-label="QA 진행률">
+                <div id="progressFill"></div>
+              </div>
+              <div class="time-grid">
+                <span>예상 <strong id="estimatedTime">-</strong></span>
+                <span>경과 <strong id="elapsedTime">-</strong></span>
+              </div>
+              <button id="cancelQa" class="danger hidden" type="button">QA 취소하기</button>
+            </div>
+            <div id="resultList" class="result-list"></div>
+            <button id="openReport" class="secondary hidden" type="button">HTML 리포트 열기</button>
+          </aside>
+        </section>
+      </section>
     </section>
 
     <section id="extractorShell" class="extractor-shell hidden">
@@ -71,14 +212,20 @@
         <button id="closeExtractor" class="secondary" type="button">닫기</button>
       </div>
       <div class="extractor-content">
-        <webview
-          id="extractorWebview"
-          partition="persist:autoqa-extractor"
-          autosize="on"
-          minwidth="320"
-          minheight="420"
-          allowpopups
-        ></webview>
+        <div class="extractor-webview-stage">
+          <webview
+            id="extractorWebview"
+            partition="persist:autoqa-extractor"
+            autosize="on"
+            minwidth="320"
+            minheight="420"
+            allowpopups
+          ></webview>
+          <div id="extractorResizeOverlay" class="extractor-resize-overlay hidden" aria-live="polite">
+            <strong>화면 조정중입니다.</strong>
+            <span>웹뷰 레이아웃을 다시 맞추고 있습니다.</span>
+          </div>
+        </div>
         <aside class="extractor-sidebar" aria-label="현재 작성된 시나리오">
           <div class="extractor-sidebar-head">
             <h2>현재 시나리오</h2>
@@ -97,6 +244,26 @@
               <span>추출 시나리오 제목</span>
               <input id="extractorRecorderTitle" type="text" value="추출 시나리오">
             </label>
+            <label class="extractor-tool-field">
+              <span>Feature 경로</span>
+              <input id="extractorRecorderFeature" type="text" placeholder="예: 인증/로그인">
+            </label>
+            <div class="extractor-tool-grid">
+              <label class="extractor-tool-field">
+                <span>테스트 유형</span>
+                <select id="extractorRecorderSuite">
+                  <option value="smoke">핵심 점검 (smoke)</option>
+                  <option value="full">전체 점검 (full)</option>
+                  <option value="regression">회귀 점검 (regression)</option>
+                  <option value="edge">예외/경계 점검 (edge)</option>
+                  <option value="custom">사용자 정의 (custom)</option>
+                </select>
+              </label>
+              <label class="extractor-tool-field">
+                <span>Tags</span>
+                <input id="extractorRecorderTags" type="text" placeholder="예: extracted, auth">
+              </label>
+            </div>
             <button id="extractorTogglePin" class="primary" type="button">핀 추가 켜기</button>
             <div id="extractorRecorderSteps" class="extractor-recorder-steps"></div>
             <div class="extractor-tool-grid">
@@ -112,61 +279,6 @@
       </div>
     </section>
 
-    <section class="workspace">
-      <div class="editor-wrap">
-        <div class="section-head">
-          <h2>QA 시나리오</h2>
-          <span id="scenarioFile">직접 작성 또는 Markdown/JSON 파일 불러오기</span>
-          <button id="toggleScenarioAccordion" class="secondary compact-button" type="button">접기</button>
-        </div>
-        <div id="scenarioAccordion" class="scenario-accordion open">
-          <textarea id="scenarioText" spellcheck="false" placeholder="시나리오 입력 후 QA를 실행해보세요."></textarea>
-        </div>
-        <section id="progressPreview" class="progress-preview hidden" aria-live="polite">
-          <div class="progress-preview-head">
-            <h2>테스트 화면 Preview</h2>
-            <span id="progressPreviewSummary">대기 중</span>
-          </div>
-          <div class="progress-preview-stage">
-            <img id="progressPreviewImage" alt="실시간 QA 테스트 화면">
-            <div id="progressPreviewEmpty" class="progress-preview-empty">테스트 화면을 기다리는 중입니다.</div>
-          </div>
-          <div class="progress-preview-caption">
-            <strong id="progressPreviewTitle">QA 실행 준비</strong>
-            <span id="progressPreviewUrl">-</span>
-          </div>
-        </section>
-      </div>
-
-      <aside class="results">
-        <div class="section-head">
-          <h2>실행 결과</h2>
-          <span id="statusText">대기 중</span>
-        </div>
-        <div class="metrics">
-          <div><span>전체</span><strong id="totalCount">0</strong></div>
-          <div><span>통과</span><strong id="passCount">0</strong></div>
-          <div><span>실패</span><strong id="failCount">0</strong></div>
-        </div>
-        <div class="progress-wrap">
-          <div class="progress-meta">
-            <span id="progressPhase">대기 중</span>
-            <strong id="progressPercent">0%</strong>
-          </div>
-          <div class="progress-bar" aria-label="QA 진행률">
-            <div id="progressFill"></div>
-          </div>
-          <div class="time-grid">
-            <span>예상 <strong id="estimatedTime">-</strong></span>
-            <span>경과 <strong id="elapsedTime">-</strong></span>
-          </div>
-          <button id="cancelQa" class="danger hidden" type="button">QA 취소하기</button>
-        </div>
-        <div id="resultList" class="result-list"></div>
-        <button id="openReport" class="secondary hidden" type="button">HTML 리포트 열기</button>
-      </aside>
-    </section>
-
     <section id="guideModal" class="guide-modal hidden" aria-modal="true" role="dialog" aria-labelledby="guideTitle">
       <div class="guide-card">
         <div class="guide-head">
@@ -178,28 +290,16 @@
         </div>
         <div class="guide-body">
           <article class="guide-step">
-            <strong>1. 테스트 대상 URL 입력</strong>
-            <p>`https://...` 형식의 서비스 URL을 입력합니다. 오른쪽 `이전 기록 불러오기` 버튼을 누르면 최근 실행했던 URL 목록이 열리고, 원하는 항목을 눌러 바로 불러올 수 있습니다.</p>
+            <strong>1. 시나리오 생성 페이지로 이동</strong>
+            <p>`시나리오 생성` 메뉴에서 대상 URL을 입력하고 화면을 열어 액션을 추출하거나 직접 시나리오를 편집합니다.</p>
           </article>
           <article class="guide-step">
-            <strong>2. 시나리오 준비</strong>
-            <p>직접 Markdown 시나리오를 작성하거나 `시나리오 추출`로 화면에서 액션을 수집하고, `시나리오 저장`으로 `.md` 파일로 내보낼 수 있습니다.</p>
+            <strong>2. 시나리오 저장</strong>
+            <p>작성한 시나리오는 추출기 또는 시나리오 생성 페이지에서 바로 저장할 수 있습니다.</p>
           </article>
           <article class="guide-step">
-            <strong>3. QA 실행</strong>
-            <p>`QA 실행`을 누르면 전체 시나리오 수, 통과/실패 수, 진행률이 즉시 갱신되고 아래 Preview 영역에서 실제 테스트 화면을 볼 수 있습니다. 실행한 URL은 이후 빠르게 다시 사용할 수 있도록 최근 기록에 자동 저장됩니다.</p>
-          </article>
-          <article class="guide-step">
-            <strong>4. 실행 옵션 이해하기</strong>
-            <p>`워커`는 동시에 처리할 실행 단위 수입니다. 숫자를 높이면 여러 시나리오를 더 빠르게 소화할 수 있지만, 대상 서비스와 PC 성능에 따라 브라우저 부하가 커질 수 있으니 처음에는 `1` 또는 `2`로 시작하는 편이 안정적입니다. `Headless`를 켜면 브라우저 창을 띄우지 않고 백그라운드에서 실행해 더 조용하고 빠르게 테스트할 수 있고, 끄면 실제 화면 흐름을 직접 보면서 점검하기 좋습니다. `Fail-fast`를 켜면 첫 실패가 발생했을 때 남은 실행을 빠르게 중단해 원인 확인에 집중할 수 있고, 끄면 실패가 있어도 끝까지 돌며 전체 상태를 한 번에 확인할 수 있습니다.</p>
-          </article>
-          <article class="guide-step">
-            <strong>5. 결과 확인</strong>
-            <p>오른쪽 실행 결과 패널에서 시나리오별 상태를 확인하고, 완료 후 `HTML 리포트 열기`로 상세 리포트를 확인합니다.</p>
-          </article>
-          <article class="guide-step">
-            <strong>6. 추천 시작 순서</strong>
-            <p>처음에는 `baseUrl 입력 -> 시나리오 추출 -> 시나리오 저장 -> QA 실행` 순서로 사용하면 가장 빠르게 익숙해집니다.</p>
+            <strong>3. QA 실행 페이지에서 실행</strong>
+            <p>`QA 실행` 메뉴에서 대상 URL과 시나리오 파일을 준비한 뒤 실행하면 진행 상태와 결과를 확인할 수 있습니다.</p>
           </article>
         </div>
       </div>

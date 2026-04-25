@@ -20,12 +20,26 @@ async function writeReports({ summary, results, artifactsDir }) {
 }
 
 function renderHtml(summary, results) {
+  const environmentCards = Array.isArray(summary.environments)
+    ? summary.environments.map((environment) => `
+      <div class="stat">
+        <div class="label">환경</div>
+        <div class="value">${escapeHtml(environment.name)}</div>
+        <div class="meta">${escapeHtml(environment.baseUrl)}</div>
+        <div class="mini">통과 ${environment.passed} / 실패 ${environment.failed}</div>
+      </div>
+    `).join("")
+    : "";
+
   const rows = results
     .map((result) => {
       const screenshot = result.screenshot
         ? `<a href="${escapeHtml(path.basename(result.screenshot))}">스크린샷</a>`
         : "-";
       return `<tr>
+        <td>${escapeHtml(result.environmentName || "기본")}</td>
+        <td>${escapeHtml(result.featurePath || "공통")}</td>
+        <td>${escapeHtml(formatSuiteLabel(result.suite))}</td>
         <td>${escapeHtml(result.title)}</td>
         <td><span class="pill ${result.status}">${escapeHtml(result.status)}</span></td>
         <td>${escapeHtml(result.durationMs)}ms</td>
@@ -50,6 +64,9 @@ function renderHtml(summary, results) {
     .stat { background: #fff; border: 1px solid #dde3ee; border-radius: 8px; padding: 16px; }
     .label { color: #667085; font-size: 13px; }
     .value { font-size: 26px; font-weight: 700; margin-top: 8px; }
+    .meta { margin-top: 8px; color: #667085; font-size: 12px; word-break: break-all; }
+    .mini { margin-top: 6px; color: #344054; font-size: 12px; }
+    .environment-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 24px; }
     table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #dde3ee; border-radius: 8px; overflow: hidden; }
     th, td { border-bottom: 1px solid #e7ebf2; padding: 12px; text-align: left; vertical-align: top; font-size: 14px; }
     th { background: #eef3fb; color: #344054; }
@@ -71,13 +88,26 @@ function renderHtml(summary, results) {
       <div class="stat"><div class="label">실패</div><div class="value">${summary.failed}</div></div>
       <div class="stat"><div class="label">소요시간</div><div class="value">${summary.durationMs}ms</div></div>
     </section>
+    ${environmentCards ? `<section class="environment-grid">${environmentCards}</section>` : ""}
     <table>
-      <thead><tr><th>시나리오</th><th>상태</th><th>시간</th><th>오류</th><th>증거</th></tr></thead>
+      <thead><tr><th>환경</th><th>Feature</th><th>Suite</th><th>시나리오</th><th>상태</th><th>시간</th><th>오류</th><th>증거</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   </main>
 </body>
 </html>`;
+}
+
+function formatSuiteLabel(value) {
+  const suite = String(value || "").trim().toLowerCase();
+  const labels = {
+    smoke: "핵심 점검 (smoke)",
+    full: "전체 점검 (full)",
+    regression: "회귀 점검 (regression)",
+    edge: "예외/경계 점검 (edge)",
+    custom: "사용자 정의 (custom)",
+  };
+  return labels[suite] || `${suite || "-"}${suite ? ` (${suite})` : ""}`;
 }
 
 module.exports = {

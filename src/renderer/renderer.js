@@ -1,5 +1,13 @@
 const elements = {
-  baseUrl: document.querySelector("#baseUrl"),
+  homePage: document.querySelector("#homePage"),
+  scenarioPage: document.querySelector("#scenarioPage"),
+  qaPage: document.querySelector("#qaPage"),
+  navScenarioPage: document.querySelector("#navScenarioPage"),
+  navQaPage: document.querySelector("#navQaPage"),
+  homeScenarioCta: document.querySelector("#homeScenarioCta"),
+  homeQaCta: document.querySelector("#homeQaCta"),
+  scenarioBaseUrl: document.querySelector("#scenarioBaseUrl"),
+  qaBaseUrl: document.querySelector("#qaBaseUrl"),
   toggleUrlHistory: document.querySelector("#toggleUrlHistory"),
   urlHistoryMenu: document.querySelector("#urlHistoryMenu"),
   urlHistoryList: document.querySelector("#urlHistoryList"),
@@ -13,6 +21,7 @@ const elements = {
   checkForUpdates: document.querySelector("#checkForUpdates"),
   installUpdate: document.querySelector("#installUpdate"),
   scenarioText: document.querySelector("#scenarioText"),
+  qaScenarioText: document.querySelector("#qaScenarioText"),
   scenarioFile: document.querySelector("#scenarioFile"),
   scenarioAccordion: document.querySelector("#scenarioAccordion"),
   toggleScenarioAccordion: document.querySelector("#toggleScenarioAccordion"),
@@ -26,15 +35,20 @@ const elements = {
   openGuide: document.querySelector("#openGuide"),
   closeGuide: document.querySelector("#closeGuide"),
   openScenario: document.querySelector("#openScenario"),
+  openScenarioQa: document.querySelector("#openScenarioQa"),
   saveScenario: document.querySelector("#saveScenario"),
   extractScenario: document.querySelector("#extractScenario"),
   extractorShell: document.querySelector("#extractorShell"),
   extractorUrl: document.querySelector("#extractorUrl"),
   extractorWebview: document.querySelector("#extractorWebview"),
+  extractorResizeOverlay: document.querySelector("#extractorResizeOverlay"),
   extractorScenarioPreview: document.querySelector("#extractorScenarioPreview"),
   extractorScenarioCount: document.querySelector("#extractorScenarioCount"),
   saveExtractorScenario: document.querySelector("#saveExtractorScenario"),
   extractorRecorderTitle: document.querySelector("#extractorRecorderTitle"),
+  extractorRecorderFeature: document.querySelector("#extractorRecorderFeature"),
+  extractorRecorderSuite: document.querySelector("#extractorRecorderSuite"),
+  extractorRecorderTags: document.querySelector("#extractorRecorderTags"),
   extractorTogglePin: document.querySelector("#extractorTogglePin"),
   extractorAddPath: document.querySelector("#extractorAddPath"),
   extractorUndoStep: document.querySelector("#extractorUndoStep"),
@@ -43,6 +57,8 @@ const elements = {
   extractorRecorderSteps: document.querySelector("#extractorRecorderSteps"),
   extractorRecorderCount: document.querySelector("#extractorRecorderCount"),
   closeExtractor: document.querySelector("#closeExtractor"),
+  backFromScenario: document.querySelector("#backFromScenario"),
+  backFromQa: document.querySelector("#backFromQa"),
   runQa: document.querySelector("#runQa"),
   statusText: document.querySelector("#statusText"),
   progressPhase: document.querySelector("#progressPhase"),
@@ -56,6 +72,12 @@ const elements = {
   failCount: document.querySelector("#failCount"),
   resultList: document.querySelector("#resultList"),
   openReport: document.querySelector("#openReport"),
+  historySummary: document.querySelector("#historySummary"),
+  historyRunCount: document.querySelector("#historyRunCount"),
+  historyPassRate: document.querySelector("#historyPassRate"),
+  historyRegressionCount: document.querySelector("#historyRegressionCount"),
+  historyRecentRuns: document.querySelector("#historyRecentRuns"),
+  historyHotspots: document.querySelector("#historyHotspots"),
 };
 
 let latestReportPath = null;
@@ -65,12 +87,17 @@ let progressTimer = null;
 let latestProgress = null;
 let extractorResizeObserver = null;
 let extractorFrameObserver = null;
+let extractorViewportSyncTimer = null;
+let extractorResizeSettledTimer = null;
+let currentPage = "home";
 const urlHistoryStorageKey = "autoqa.baseUrlHistory";
 const maxUrlHistoryItems = 6;
 
 initializeGuide();
 renderUrlHistory();
 syncPreviewVisibility();
+refreshHistory();
+setPage("home");
 
 window.autoqa.onProgress((progress) => {
   if (progress.runId !== activeRunId) return;
@@ -81,9 +108,10 @@ window.autoqa.onProgress((progress) => {
 window.autoqa.onScenarioExtracted((payload) => {
   if (!payload?.markdown) return;
   const current = elements.scenarioText.value.trim();
-  elements.scenarioText.value = current
+  const nextValue = current
     ? `${current}\n\n${payload.markdown.trim()}\n`
     : `${payload.markdown.trim()}\n`;
+  setSharedScenarioText(nextValue);
   elements.scenarioFile.textContent = "시나리오 추출 결과가 추가됨";
   renderExtractorScenarioPreview();
 });
@@ -96,30 +124,42 @@ window.autoqa.onAppUpdateState((state) => {
   renderAppUpdateState(state);
 });
 
-elements.openScenario.addEventListener("click", async () => {
-  const file = await window.autoqa.openScenario();
-  if (!file) return;
-  elements.scenarioText.value = file.content;
-  elements.scenarioFile.textContent = file.filePath;
-  renderExtractorScenarioPreview();
-});
+elements.navScenarioPage.addEventListener("click", () => setPage("scenario"));
+elements.navQaPage.addEventListener("click", () => setPage("qa"));
+elements.homeScenarioCta.addEventListener("click", () => setPage("scenario"));
+elements.homeQaCta.addEventListener("click", () => setPage("qa"));
+elements.backFromScenario.addEventListener("click", () => setPage("home"));
+elements.backFromQa.addEventListener("click", () => setPage("home"));
 
+elements.openScenario.addEventListener("click", openScenarioIntoEditors);
+elements.openScenarioQa.addEventListener("click", openScenarioIntoEditors);
 elements.saveScenario.addEventListener("click", saveCurrentScenario);
 elements.saveExtractorScenario.addEventListener("click", saveCurrentScenario);
+
 elements.toggleUrlHistory.addEventListener("click", () => {
   const isOpen = !elements.urlHistoryMenu.classList.contains("hidden");
   setUrlHistoryOpen(!isOpen);
 });
+
 elements.clearUrlHistory.addEventListener("click", () => {
   window.localStorage.removeItem(urlHistoryStorageKey);
   renderUrlHistory();
 });
-elements.baseUrl.addEventListener("focus", () => {
+
+elements.qaBaseUrl.addEventListener("focus", () => {
   if (loadUrlHistory().length) setUrlHistoryOpen(true);
 });
-elements.headless.addEventListener("change", () => {
-  syncPreviewVisibility();
+
+elements.scenarioBaseUrl.addEventListener("input", () => {
+  elements.qaBaseUrl.value = elements.scenarioBaseUrl.value;
 });
+
+elements.qaBaseUrl.addEventListener("input", () => {
+  elements.scenarioBaseUrl.value = elements.qaBaseUrl.value;
+});
+
+elements.headless.addEventListener("change", syncPreviewVisibility);
+
 elements.checkForUpdates.addEventListener("click", async () => {
   elements.checkForUpdates.disabled = true;
   try {
@@ -128,21 +168,23 @@ elements.checkForUpdates.addEventListener("click", async () => {
     elements.checkForUpdates.disabled = false;
   }
 });
+
 elements.installUpdate.addEventListener("click", async () => {
   elements.installUpdate.disabled = true;
   await window.autoqa.installAppUpdate();
 });
 
-elements.scenarioText.addEventListener("input", renderExtractorScenarioPreview);
-
-elements.openGuide.addEventListener("click", () => {
-  setGuideOpen(true);
+elements.scenarioText.addEventListener("input", () => {
+  syncScenarioEditors(elements.scenarioText, elements.qaScenarioText);
+  renderExtractorScenarioPreview();
 });
 
-elements.closeGuide.addEventListener("click", () => {
-  dismissGuide();
+elements.qaScenarioText.addEventListener("input", () => {
+  syncScenarioEditors(elements.qaScenarioText, elements.scenarioText);
 });
 
+elements.openGuide.addEventListener("click", () => setGuideOpen(true));
+elements.closeGuide.addEventListener("click", dismissGuide);
 elements.guideModal.addEventListener("click", (event) => {
   if (event.target === elements.guideModal) dismissGuide();
 });
@@ -153,49 +195,49 @@ document.addEventListener("click", (event) => {
 });
 
 elements.toggleScenarioAccordion.addEventListener("click", () => {
-  setScenarioAccordionOpen(!elements.scenarioAccordion.classList.contains("open"));
+  setScenarioAccordionOpen(
+    !elements.scenarioAccordion.classList.contains("open"),
+  );
 });
 
 elements.extractorTogglePin.addEventListener("click", () => {
   sendExtractorRecorderCommand("toggleCapture");
 });
-
 elements.extractorAddPath.addEventListener("click", () => {
   sendExtractorRecorderCommand("addCurrentPath");
 });
-
 elements.extractorUndoStep.addEventListener("click", () => {
   sendExtractorRecorderCommand("undoStep");
 });
-
 elements.extractorClearSteps.addEventListener("click", () => {
   sendExtractorRecorderCommand("clearSteps");
 });
-
 elements.extractorCommitScenario.addEventListener("click", () => {
   sendExtractorRecorderCommand("commitScenario", {
     title: elements.extractorRecorderTitle.value,
+    feature: elements.extractorRecorderFeature.value,
+    suite: elements.extractorRecorderSuite.value,
+    tags: elements.extractorRecorderTags.value,
   });
 });
 
 elements.extractScenario.addEventListener("click", async () => {
   const config = await window.autoqa.openScenarioExtractor({
-    baseUrl: elements.baseUrl.value,
+    baseUrl: elements.scenarioBaseUrl.value,
   });
   openEmbeddedExtractor(config);
 });
 
-elements.closeExtractor.addEventListener("click", () => {
-  closeEmbeddedExtractor();
-});
+elements.closeExtractor.addEventListener("click", closeEmbeddedExtractor);
 
 elements.runQa.addEventListener("click", async () => {
   activeRunId = `run-${Date.now()}`;
   runStartedAt = Date.now();
-  const scenarioTotal = countScenarioRuns(elements.scenarioText.value);
+  const scenarioTotal = countScenarioRunsFallback(
+    elements.qaScenarioText.value,
+  );
   const previewEnabled = elements.headless.checked;
   setRunning(true);
-  setScenarioAccordionOpen(false);
   renderResults([]);
   renderRunCounts({ total: scenarioTotal, passed: 0, failed: 0 });
   resetScreenPreview(scenarioTotal, previewEnabled);
@@ -205,11 +247,11 @@ elements.runQa.addEventListener("click", async () => {
   elements.openReport.classList.add("hidden");
 
   try {
-    saveBaseUrlHistory(elements.baseUrl.value);
+    saveBaseUrlHistory(elements.qaBaseUrl.value);
     const result = await window.autoqa.run({
       runId: activeRunId,
-      baseUrl: elements.baseUrl.value,
-      scenarioText: elements.scenarioText.value,
+      baseUrl: elements.qaBaseUrl.value,
+      scenarioText: elements.qaScenarioText.value,
       workers: Number(elements.workers.value) || 1,
       headless: elements.headless.checked,
       failFast: elements.failFast.checked,
@@ -224,6 +266,7 @@ elements.runQa.addEventListener("click", async () => {
     renderResults(result.results);
     latestReportPath = result.reports.htmlPath;
     elements.openReport.classList.remove("hidden");
+    refreshHistory();
   } catch (error) {
     const cancelled = error.message.includes("취소");
     elements.statusText.textContent = cancelled ? "취소됨" : "실패";
@@ -256,9 +299,43 @@ elements.openReport.addEventListener("click", async () => {
   if (latestReportPath) await window.autoqa.openReport(latestReportPath);
 });
 
+function setPage(page) {
+  currentPage = page;
+  const pages = {
+    home: elements.homePage,
+    scenario: elements.scenarioPage,
+    qa: elements.qaPage,
+  };
+
+  Object.entries(pages).forEach(([key, node]) => {
+    node.classList.toggle("hidden", key !== page);
+  });
+
+  elements.navScenarioPage.classList.toggle("active", page === "scenario");
+  elements.navQaPage.classList.toggle("active", page === "qa");
+}
+
+function syncScenarioEditors(source, target) {
+  if (target.value === source.value) return;
+  target.value = source.value;
+}
+
+function setSharedScenarioText(value) {
+  elements.scenarioText.value = value;
+  elements.qaScenarioText.value = value;
+}
+
+async function openScenarioIntoEditors() {
+  const file = await window.autoqa.openScenario();
+  if (!file) return;
+  setSharedScenarioText(file.content);
+  elements.scenarioFile.textContent = file.filePath;
+  renderExtractorScenarioPreview();
+}
+
 function setRunning(isRunning) {
   elements.runQa.disabled = isRunning;
-  elements.openScenario.disabled = isRunning;
+  elements.openScenarioQa.disabled = isRunning;
   elements.extractScenario.disabled = isRunning;
   elements.cancelQa.disabled = false;
   elements.cancelQa.classList.toggle("hidden", !isRunning);
@@ -270,14 +347,16 @@ function setRunning(isRunning) {
 function openEmbeddedExtractor(config) {
   if (!config?.targetUrl || !config?.preloadUrl) return;
   elements.extractorUrl.textContent = config.targetUrl;
+  seedExtractorMetadata(config.targetUrl);
   renderExtractorScenarioPreview();
   renderExtractorRecorderState();
   elements.extractorWebview.setAttribute("preload", config.preloadUrl);
   elements.extractorWebview.removeAttribute("src");
   elements.extractorShell.classList.remove("hidden");
   document.body.classList.add("extractor-open");
+  setExtractorResizeLoading(false);
   startExtractorSizing();
-  window.addEventListener("resize", sizeExtractorWebview);
+  window.addEventListener("resize", handleExtractorWindowResize);
   elements.extractorWebview.addEventListener(
     "dom-ready",
     () => {
@@ -300,11 +379,57 @@ function openEmbeddedExtractor(config) {
   elements.extractorWebview.setAttribute("src", config.targetUrl);
 }
 
+function seedExtractorMetadata(targetUrl) {
+  const pathname = parsePathname(targetUrl);
+  const inferredFeature = inferFeatureFromUrl(targetUrl);
+  const inferredSuite = pathname === "/" ? "smoke" : "full";
+  const inferredTags = ["extracted", ...pathname.split("/").filter(Boolean)]
+    .slice(0, 4)
+    .join(", ");
+
+  if (
+    !elements.extractorRecorderTitle.value.trim() ||
+    elements.extractorRecorderTitle.value === "추출 시나리오"
+  ) {
+    elements.extractorRecorderTitle.value =
+      inferredFeature.split("/").at(-1) || "추출 시나리오";
+  }
+  if (!elements.extractorRecorderFeature.value.trim()) {
+    elements.extractorRecorderFeature.value = inferredFeature;
+  }
+  if (!elements.extractorRecorderTags.value.trim()) {
+    elements.extractorRecorderTags.value = inferredTags;
+  }
+  elements.extractorRecorderSuite.value = inferredSuite;
+}
+
+function parsePathname(targetUrl) {
+  try {
+    return new URL(targetUrl).pathname || "/";
+  } catch {
+    return "/";
+  }
+}
+
+function inferFeatureFromUrl(targetUrl) {
+  const pathname = parsePathname(targetUrl);
+  const parts = pathname.split("/").filter(Boolean);
+  if (!parts.length) return "홈";
+  return parts.map((part) => humanizeSegment(part)).join("/");
+}
+
+function humanizeSegment(value) {
+  return String(value || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function closeEmbeddedExtractor() {
   elements.extractorWebview.removeAttribute("src");
   elements.extractorShell.classList.add("hidden");
   document.body.classList.remove("extractor-open");
-  window.removeEventListener("resize", sizeExtractorWebview);
+  window.removeEventListener("resize", handleExtractorWindowResize);
+  setExtractorResizeLoading(false);
   stopExtractorSizing();
 }
 
@@ -316,25 +441,79 @@ function renderExtractorScenarioPreview() {
   elements.extractorScenarioCount.textContent = `${lineCount}줄`;
 }
 
-function countScenarioRuns(input) {
-  const text = String(input || "").replace(/\r\n/g, "\n").trim();
+function countScenarioRunsFallback(input) {
+  const text = String(input || "")
+    .replace(/\r\n/g, "\n")
+    .trim();
   if (!text) return 1;
+  return Math.max(
+    1,
+    text
+      .split(/\n(?=#{1,3}\s*시나리오:|\n?Scenario:|\n?시나리오:)/i)
+      .map((block) => block.trim())
+      .filter(Boolean).length,
+  );
+}
 
-  if (text.startsWith("[") || text.startsWith("{")) {
-    try {
-      const parsed = JSON.parse(text);
-      const items = Array.isArray(parsed) ? parsed : parsed.scenarios || [];
-      return Math.max(1, items.length);
-    } catch {
-      return 1;
-    }
+async function refreshHistory() {
+  const history = await window.autoqa.loadHistory().catch(() => null);
+  renderHistory(history);
+}
+
+function renderHistory(history) {
+  if (!history) return;
+  elements.historyRunCount.textContent = String(history.totals?.runCount || 0);
+  elements.historyPassRate.textContent = `${history.totals?.averagePassRate || 0}%`;
+  elements.historyRegressionCount.textContent = String(
+    history.regressions || 0,
+  );
+  elements.historySummary.textContent = history.totals?.runCount
+    ? `최근 ${history.totals.runCount}회 실행을 기준으로 품질 흐름을 요약했습니다.`
+    : "아직 저장된 실행 이력이 없습니다.";
+  renderHistoryList(
+    elements.historyRecentRuns,
+    history.recentRuns,
+    (item) => `
+      <div class="history-item">
+        <strong>${formatHistoryDate(item.createdAt)}</strong>
+        <span>Pass ${item.passRate}% · 실패 ${item.failed} · 환경 ${item.environmentCount}</span>
+      </div>
+    `,
+    "최근 실행 이력이 없습니다.",
+  );
+  renderHistoryList(
+    elements.historyHotspots,
+    history.hotspots,
+    (item) => `
+      <div class="history-item">
+        <strong>${escapeHtml(item.title)}</strong>
+        <span>${escapeHtml(item.featurePath)} · 실패 ${item.failures}회</span>
+      </div>
+    `,
+    "반복 실패 Hot Spot이 없습니다.",
+  );
+}
+
+function renderHistoryList(target, items, renderItem, emptyMessage) {
+  if (!items?.length) {
+    target.innerHTML = `<div class="empty-state">${emptyMessage}</div>`;
+    return;
   }
+  target.innerHTML = items.map(renderItem).join("");
+}
 
-  const blocks = text
-    .split(/\n(?=#{1,3}\s*시나리오:|\n?Scenario:|\n?시나리오:)/i)
-    .map((block) => block.trim())
-    .filter(Boolean);
-  return Math.max(1, blocks.length);
+function formatSuiteLabel(value) {
+  const suite = String(value || "")
+    .trim()
+    .toLowerCase();
+  const labels = {
+    smoke: "핵심 점검 (smoke)",
+    full: "전체 점검 (full)",
+    regression: "회귀 점검 (regression)",
+    edge: "예외/경계 점검 (edge)",
+    custom: "사용자 정의 (custom)",
+  };
+  return labels[suite] || `${suite || "-"}${suite ? ` (${suite})` : ""}`;
 }
 
 function renderRunCounts({ total, passed, failed }) {
@@ -345,7 +524,6 @@ function renderRunCounts({ total, passed, failed }) {
 
 function renderAppUpdateState(state = {}) {
   if (state.type === "disabled") return;
-
   const titleByType = {
     checking: "업데이트 확인 중",
     available: "새 업데이트 발견",
@@ -355,27 +533,30 @@ function renderAppUpdateState(state = {}) {
     error: "업데이트 오류",
     installing: "업데이트 설치 중",
   };
-
   elements.updateBanner.classList.remove("hidden");
-  elements.updateBannerTitle.textContent = titleByType[state.type] || "업데이트";
+  elements.updateBannerTitle.textContent =
+    titleByType[state.type] || "업데이트";
   elements.updateBannerMessage.textContent =
     state.message || "업데이트 정보를 불러오는 중입니다.";
-  elements.installUpdate.classList.toggle("hidden", state.type !== "downloaded");
+  elements.installUpdate.classList.toggle(
+    "hidden",
+    state.type !== "downloaded",
+  );
   elements.installUpdate.disabled = false;
 }
 
 function initializeGuide() {
   const guideSeen = window.localStorage.getItem("autoqa.guideSeen");
   if (!guideSeen) {
-    window.requestAnimationFrame(() => {
-      setGuideOpen(true);
-    });
+    window.requestAnimationFrame(() => setGuideOpen(true));
   }
 }
 
 function loadUrlHistory() {
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(urlHistoryStorageKey) || "[]");
+    const parsed = JSON.parse(
+      window.localStorage.getItem(urlHistoryStorageKey) || "[]",
+    );
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -415,7 +596,8 @@ function renderUrlHistory() {
 
   elements.clearUrlHistory.disabled = false;
   elements.urlHistoryList.innerHTML = items
-    .map((item, index) => `
+    .map(
+      (item, index) => `
       <div class="url-history-item">
         <div class="url-history-meta">
           <strong>${escapeHtml(item.url)}</strong>
@@ -423,18 +605,22 @@ function renderUrlHistory() {
         </div>
         <button class="secondary compact-button url-history-apply" type="button" data-history-index="${index}">퀵 스타트</button>
       </div>
-    `)
+    `,
+    )
     .join("");
 
-  elements.urlHistoryList.querySelectorAll("[data-history-index]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const selected = items[Number(button.dataset.historyIndex)];
-      if (!selected?.url) return;
-      elements.baseUrl.value = selected.url;
-      setUrlHistoryOpen(false);
-      elements.baseUrl.focus();
+  elements.urlHistoryList
+    .querySelectorAll("[data-history-index]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        const selected = items[Number(button.dataset.historyIndex)];
+        if (!selected?.url) return;
+        elements.qaBaseUrl.value = selected.url;
+        elements.scenarioBaseUrl.value = selected.url;
+        setUrlHistoryOpen(false);
+        elements.qaBaseUrl.focus();
+      });
     });
-  });
 }
 
 function formatHistoryDate(value) {
@@ -466,7 +652,10 @@ function setScenarioAccordionOpen(isOpen) {
 }
 
 function syncPreviewVisibility() {
-  elements.progressPreview.classList.toggle("hidden", !elements.headless.checked);
+  elements.progressPreview.classList.toggle(
+    "hidden",
+    !elements.headless.checked,
+  );
 }
 
 function resetScreenPreview(scenarioTotal = 0, previewEnabled = true) {
@@ -521,7 +710,9 @@ async function saveCurrentScenario() {
 }
 
 function inferScenarioTitle(content) {
-  const match = content.match(/^(?:#{1,3}\s*)?(?:시나리오|Scenario)\s*:\s*(.+)$/im);
+  const match = content.match(
+    /^(?:#{1,3}\s*)?(?:시나리오|Scenario)\s*:\s*(.+)$/im,
+  );
   return match?.[1]?.trim() || "autoqa-scenario";
 }
 
@@ -533,11 +724,11 @@ function renderExtractorRecorderState(state = {}) {
   elements.extractorRecorderCount.textContent = `${steps.length}개`;
   elements.extractorRecorderSteps.innerHTML = steps.length
     ? steps
-      .map(
-        (step, index) =>
-          `<div class="extractor-recorder-step"><strong>${index + 1}.</strong> ${escapeHtml(step)}</div>`,
-      )
-      .join("")
+        .map(
+          (step, index) =>
+            `<div class="extractor-recorder-step"><strong>${index + 1}.</strong> ${escapeHtml(step)}</div>`,
+        )
+        .join("")
     : `<div class="extractor-recorder-step">아직 추가된 핀이 없습니다.</div>`;
 }
 
@@ -557,19 +748,19 @@ async function sendExtractorRecorderCommand(action, detail = {}) {
 
 function startExtractorSizing() {
   stopExtractorSizing();
-  sizeExtractorWebview();
+  runExtractorViewportRender();
   window.requestAnimationFrame(() => {
-    sizeExtractorWebview();
-    window.requestAnimationFrame(sizeExtractorWebview);
+    runExtractorViewportRender();
+    window.requestAnimationFrame(runExtractorViewportRender);
   });
 
   if (typeof ResizeObserver !== "undefined") {
-    extractorResizeObserver = new ResizeObserver(sizeExtractorWebview);
+    extractorResizeObserver = new ResizeObserver(runExtractorViewportRender);
     extractorResizeObserver.observe(elements.extractorShell);
   }
 
   if (typeof MutationObserver !== "undefined") {
-    extractorFrameObserver = new MutationObserver(sizeExtractorWebview);
+    extractorFrameObserver = new MutationObserver(runExtractorViewportRender);
     extractorFrameObserver.observe(elements.extractorWebview, {
       childList: true,
       subtree: true,
@@ -582,6 +773,75 @@ function stopExtractorSizing() {
   extractorResizeObserver = null;
   extractorFrameObserver?.disconnect();
   extractorFrameObserver = null;
+  if (extractorViewportSyncTimer) {
+    window.clearTimeout(extractorViewportSyncTimer);
+    extractorViewportSyncTimer = null;
+  }
+  if (extractorResizeSettledTimer) {
+    window.clearTimeout(extractorResizeSettledTimer);
+    extractorResizeSettledTimer = null;
+  }
+}
+
+function runExtractorViewportRender() {
+  sizeExtractorWebview();
+  if (extractorViewportSyncTimer) {
+    window.clearTimeout(extractorViewportSyncTimer);
+  }
+  extractorViewportSyncTimer = window.setTimeout(() => {
+    rerenderExtractorGuestViewport();
+  }, 40);
+}
+
+function handleExtractorWindowResize() {
+  if (elements.extractorShell.classList.contains("hidden")) return;
+
+  const webview = elements.extractorWebview;
+
+  setExtractorResizeLoading(true);
+
+  const { width, height } = getExtractorWebviewSize();
+
+  webview.style.width = `${width}px`;
+  webview.style.height = `${height}px`;
+
+  void webview.offsetWidth;
+
+  webview.style.width = "100%";
+  webview.style.height = `${height}px`;
+
+  forceIframeReflow(webview);
+
+  if (extractorResizeSettledTimer) {
+    clearTimeout(extractorResizeSettledTimer);
+  }
+
+  extractorResizeSettledTimer = setTimeout(async () => {
+    try {
+      await rerenderExtractorGuestViewport();
+    } finally {
+      setExtractorResizeLoading(false);
+    }
+  }, 180);
+}
+
+function forceIframeReflow(webview) {
+  const frames = [
+    webview.querySelector("iframe"),
+    webview.shadowRoot?.querySelector("iframe"),
+  ].filter(Boolean);
+
+  frames.forEach((frame) => {
+    frame.style.width = "99.9%";
+
+    void frame.offsetWidth;
+
+    frame.style.width = "100%";
+  });
+}
+
+function setExtractorResizeLoading(isLoading) {
+  elements.extractorResizeOverlay.classList.toggle("hidden", !isLoading);
 }
 
 function sizeExtractorWebview() {
@@ -603,7 +863,10 @@ function getExtractorWebviewSize() {
   const toolbarHeight = toolbar?.offsetHeight || 62;
   const height =
     contentRect?.height || elements.extractorShell.clientHeight - toolbarHeight;
-  const width = webviewRect.width || contentRect?.width || elements.extractorShell.clientWidth;
+  const width =
+    webviewRect.width ||
+    contentRect?.width ||
+    elements.extractorShell.clientWidth;
   return {
     height: Math.max(420, Math.floor(height)),
     width: Math.max(320, Math.floor(width)),
@@ -621,6 +884,7 @@ function sizeExtractorHostFrame(height, width) {
     style.id = styleId;
     elements.extractorWebview.appendChild(style);
   }
+
   style.textContent = `
     :host { display: flex !important; align-items: stretch !important; }
     iframe {
@@ -671,7 +935,8 @@ async function normalizeExtractorGuestViewport() {
   await resetExtractorScroll();
 
   if (typeof elements.extractorWebview.executeJavaScript !== "function") return;
-  const { height: hostViewportHeight } = getExtractorWebviewSize();
+  const { height: hostViewportHeight, width: hostViewportWidth } =
+    getExtractorWebviewSize();
   await elements.extractorWebview
     .executeJavaScript(
       `
@@ -684,38 +949,30 @@ async function normalizeExtractorGuestViewport() {
         document.documentElement.appendChild(style);
       }
       const viewportHeight = Math.max(window.innerHeight, ${hostViewportHeight});
+      const viewportWidth = Math.max(window.innerWidth, ${hostViewportWidth});
       document.documentElement.style.setProperty('--autoqa-host-viewport-height', viewportHeight + 'px');
+      document.documentElement.style.setProperty('--autoqa-host-viewport-width', viewportWidth + 'px');
       style.textContent = [
-        'html { height: 100% !important; min-height: ' + viewportHeight + 'px !important; margin: 0 !important; overflow: auto !important; }',
-        'body { height: 100% !important; min-height: ' + viewportHeight + 'px !important; margin: 0 !important; overflow: auto !important; }',
-        '#root, #__next, #app, .app, [data-reactroot] { min-height: ' + viewportHeight + 'px !important; }',
+        'html { width: 100% !important; min-width: ' + viewportWidth + 'px !important; height: 100% !important; min-height: ' + viewportHeight + 'px !important; margin: 0 !important; overflow: auto !important; }',
+        'body { width: 100% !important; min-width: ' + viewportWidth + 'px !important; height: 100% !important; min-height: ' + viewportHeight + 'px !important; margin: 0 !important; overflow: auto !important; }',
+        '#root, #__next, #app, .app, [data-reactroot] { width: 100% !important; min-width: ' + viewportWidth + 'px !important; min-height: ' + viewportHeight + 'px !important; }',
         'iframe { height: 100% !important; min-height: ' + viewportHeight + 'px !important; max-height: none !important; }'
       ].join('\\n');
-
       for (const frame of document.querySelectorAll('iframe')) {
         frame.style.height = '100%';
         frame.style.minHeight = viewportHeight + 'px';
         frame.style.maxHeight = 'none';
       }
-
       document.documentElement.style.scrollBehavior = 'auto';
       document.body.style.scrollBehavior = 'auto';
       window.dispatchEvent(new Event('resize'));
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
-
       requestAnimationFrame(() => {
         window.dispatchEvent(new Event('resize'));
         window.scrollTo(0, 0);
       });
-
-      return {
-        innerHeight: window.innerHeight,
-        documentHeight: document.documentElement.scrollHeight,
-        bodyHeight: document.body.scrollHeight,
-        devicePixelRatio: window.devicePixelRatio
-      };
     })();
   `,
     )
@@ -724,6 +981,33 @@ async function normalizeExtractorGuestViewport() {
   await new Promise((resolve) => window.setTimeout(resolve, 150));
   sizeExtractorWebview();
   await resetExtractorScroll();
+}
+
+async function rerenderExtractorGuestViewport() {
+  await normalizeExtractorGuestViewport();
+  if (typeof elements.extractorWebview.executeJavaScript !== "function") return;
+  await elements.extractorWebview
+    .executeJavaScript(
+      `
+    (() => {
+      const root = document.documentElement;
+      const body = document.body;
+      if (!root || !body) return;
+      root.style.willChange = 'width, height';
+      body.style.willChange = 'width, height';
+      root.style.visibility = 'hidden';
+      void root.offsetWidth;
+      root.style.visibility = '';
+      window.dispatchEvent(new Event('resize'));
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new Event('resize'));
+        root.style.willChange = '';
+        body.style.willChange = '';
+      });
+    })();
+  `,
+    )
+    .catch(() => {});
 }
 
 function resetProgress(scenarioTotal = 0) {
@@ -776,8 +1060,7 @@ function renderProgress(progress) {
       passed: progress.scenarioPassed || 0,
       failed: progress.scenarioFailed || 0,
     });
-    elements.progressPreviewSummary.textContent =
-      `전체 ${progress.scenarioTotal}개 / 통과 ${progress.scenarioPassed || 0} / 실패 ${progress.scenarioFailed || 0}`;
+    elements.progressPreviewSummary.textContent = `전체 ${progress.scenarioTotal}개 / 통과 ${progress.scenarioPassed || 0} / 실패 ${progress.scenarioFailed || 0}`;
   }
   renderScreenPreview(progress);
 }
@@ -789,7 +1072,6 @@ function estimateTotalMs(progress, elapsedMs) {
       Math.round((elapsedMs / progress.completed) * progress.total),
     );
   }
-
   return progress.estimatedTotalMs || 0;
 }
 
@@ -817,6 +1099,7 @@ function renderResults(results) {
     item.innerHTML = `
       <span class="badge ${result.status}">${result.status}</span>
       <strong>${escapeHtml(result.title)}</strong>
+      <p>${escapeHtml(result.environmentName || "기본")} · ${escapeHtml(result.featurePath || "공통")} · ${escapeHtml(formatSuiteLabel(result.suite))}</p>
       <p>${Number(result.durationMs || 0)}ms</p>
       ${result.error ? `<p>${escapeHtml(result.error)}</p>` : ""}
     `;

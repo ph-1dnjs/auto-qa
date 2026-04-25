@@ -31,6 +31,8 @@ function parseJsonScenarios(text) {
     title: item.title || item.name || `Scenario ${index + 1}`,
     priority: item.priority || "Medium",
     tags: item.tags || [],
+    feature: item.feature || item.featurePath || "",
+    suite: item.suite || item.type || "",
     steps: (item.steps || []).map((step) =>
       typeof step === "string" ? parseNaturalLanguageStep(step) : step
     )
@@ -46,6 +48,8 @@ function parseMarkdownScenario(block, index) {
   let title = `Scenario ${index + 1}`;
   let priority = "Medium";
   let tags = [];
+  let feature = "";
+  let suite = "";
   const steps = [];
 
   for (const line of lines) {
@@ -67,6 +71,18 @@ function parseMarkdownScenario(block, index) {
       continue;
     }
 
+    const featureMatch = line.match(/^feature\s*:\s*(.+)$/i);
+    if (featureMatch) {
+      feature = featureMatch[1].trim();
+      continue;
+    }
+
+    const suiteMatch = line.match(/^suite\s*:\s*(.+)$/i);
+    if (suiteMatch) {
+      suite = suiteMatch[1].trim();
+      continue;
+    }
+
     if (/^(Given|When|Then|And|But)\b/i.test(line)) {
       steps.push(parseNaturalLanguageStep(line.replace(/^(Given|When|Then|And|But)\s+/i, "")));
     }
@@ -77,6 +93,8 @@ function parseMarkdownScenario(block, index) {
     title,
     priority,
     tags,
+    feature,
+    suite,
     steps
   };
 }

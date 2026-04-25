@@ -31,7 +31,7 @@ function installBridge() {
     }
     if (detail.action === "undoStep") undoStep();
     if (detail.action === "clearSteps") clearSteps();
-    if (detail.action === "commitScenario") commitScenario(detail.title);
+    if (detail.action === "commitScenario") commitScenario(detail);
     if (detail.action === "refresh") emitRecorderState();
   });
 }
@@ -50,40 +50,41 @@ function installStyles() {
       flex-direction: column;
       gap: 10px;
       padding: 14px;
-      border: 1px solid #d7dfeb;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.97);
-      box-shadow: 0 16px 42px rgba(15, 23, 42, 0.18);
-      color: #172033;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      border: 1px solid rgba(190, 214, 255, 0.16);
+      border-radius: 20px;
+      background: rgba(8, 15, 40, 0.88);
+      box-shadow: 0 28px 60px rgba(2, 6, 23, 0.42);
+      color: #f7f8ff;
+      backdrop-filter: blur(18px);
+      font-family: "Apple SD Gothic Neo", "Segoe UI", sans-serif;
       font-size: 13px;
     }
     #autoqa-recorder-panel * { box-sizing: border-box; }
-    #autoqa-recorder-panel h2 { margin: 0; font-size: 16px; }
-    #autoqa-recorder-panel p { margin: 0; color: #667085; line-height: 1.45; }
+    #autoqa-recorder-panel h2 { margin: 0; font-size: 16px; color: #f1eee7; }
+    #autoqa-recorder-panel p { margin: 0; color: rgba(202, 215, 247, 0.72); line-height: 1.45; }
     #autoqa-recorder-panel button,
     #autoqa-recorder-panel input {
-      height: 34px;
-      border-radius: 7px;
-      border: 1px solid #d7dfeb;
-      background: #fff;
-      color: #172033;
+      height: 36px;
+      border-radius: 12px;
+      border: 1px solid rgba(190, 214, 255, 0.16);
+      background: rgba(240, 245, 255, 0.08);
+      color: #f7f8ff;
       font: inherit;
     }
     #autoqa-recorder-panel button {
       cursor: pointer;
-      padding: 0 10px;
+      padding: 0 12px;
       font-weight: 700;
     }
     #autoqa-recorder-panel .primary {
-      border-color: #1d4ed8;
-      background: #1d4ed8;
-      color: #fff;
+      border-color: transparent;
+      background: linear-gradient(180deg, #faf4e8 0%, #e6e3d6 100%);
+      color: #0f1842;
     }
     #autoqa-recorder-panel .danger {
-      border-color: #fecaca;
-      background: #fee2e2;
-      color: #b42318;
+      border-color: rgba(255, 177, 187, 0.2);
+      background: rgba(111, 26, 45, 0.45);
+      color: #ffe7e9;
     }
     #autoqa-recorder-panel .row {
       display: grid;
@@ -93,13 +94,13 @@ function installStyles() {
     #autoqa-recorder-panel .steps {
       overflow: auto;
       max-height: 280px;
-      border: 1px solid #e5eaf2;
-      border-radius: 7px;
-      background: #f8fafc;
+      border: 1px solid rgba(189, 214, 255, 0.1);
+      border-radius: 14px;
+      background: rgba(210, 226, 255, 0.05);
     }
     #autoqa-recorder-panel .step {
-      padding: 8px;
-      border-bottom: 1px solid #e5eaf2;
+      padding: 10px;
+      border-bottom: 1px solid rgba(189, 214, 255, 0.08);
       line-height: 1.4;
     }
     #autoqa-recorder-panel .step:last-child { border-bottom: 0; }
@@ -139,25 +140,26 @@ function installStyles() {
       grid-template-columns: 1fr;
       gap: 8px;
       padding: 12px;
-      border: 1px solid #d7dfeb;
-      border-radius: 8px;
-      background: #fff;
-      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.24);
-      color: #172033;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      border: 1px solid rgba(190, 214, 255, 0.16);
+      border-radius: 18px;
+      background: rgba(8, 15, 40, 0.92);
+      box-shadow: 0 28px 60px rgba(2, 6, 23, 0.42);
+      color: #f7f8ff;
+      backdrop-filter: blur(18px);
+      font-family: "Apple SD Gothic Neo", "Segoe UI", sans-serif;
       font-size: 13px;
     }
     #autoqa-pin-editor.open { display: grid; }
-    #autoqa-pin-editor label { display: grid; gap: 5px; color: #667085; font-size: 12px; font-weight: 700; }
+    #autoqa-pin-editor label { display: grid; gap: 5px; color: rgba(202, 215, 247, 0.72); font-size: 12px; font-weight: 700; }
     #autoqa-pin-editor input,
     #autoqa-pin-editor select {
       width: 100%;
-      height: 34px;
-      border: 1px solid #d7dfeb;
-      border-radius: 7px;
+      height: 36px;
+      border: 1px solid rgba(190, 214, 255, 0.16);
+      border-radius: 12px;
       padding: 0 9px;
-      background: #fff;
-      color: #172033;
+      background: rgba(240, 245, 255, 0.08);
+      color: #f7f8ff;
       font: inherit;
     }
     #autoqa-pin-editor .row {
@@ -166,19 +168,19 @@ function installStyles() {
       gap: 8px;
     }
     #autoqa-pin-editor button {
-      height: 34px;
-      border-radius: 7px;
-      border: 1px solid #d7dfeb;
-      background: #fff;
-      color: #172033;
+      height: 36px;
+      border-radius: 12px;
+      border: 1px solid rgba(190, 214, 255, 0.16);
+      background: rgba(240, 245, 255, 0.08);
+      color: #f7f8ff;
       font: inherit;
       font-weight: 800;
       cursor: pointer;
     }
     #autoqa-pin-editor .primary {
-      border-color: #1d4ed8;
-      background: #1d4ed8;
-      color: #fff;
+      border-color: transparent;
+      background: linear-gradient(180deg, #faf4e8 0%, #e6e3d6 100%);
+      color: #0f1842;
     }
   `;
   document.documentElement.appendChild(style);
@@ -378,15 +380,20 @@ function renderSteps() {
     : `<div class="step">아직 추가된 핀이 없습니다.</div>`;
 }
 
-function commitScenario(titleValue) {
-  const title = titleValue || document.querySelector("#autoqa-title")?.value || "추출 시나리오";
+function commitScenario(detail = {}) {
+  const title = detail.title || document.querySelector("#autoqa-title")?.value || "추출 시나리오";
+  const feature = cleanText(detail.feature || inferFeatureFromLocation());
+  const suite = normalizeSuite(detail.suite || inferSuiteFromLocation());
+  const tags = normalizeTags(detail.tags || inferTagsFromLocation());
   const steps = state.steps.length
     ? state.steps.map((item) => item.step)
     : [`Given ${window.location.pathname || "/"} 페이지로 이동한다`];
   const markdown = [
     `# 시나리오: ${title}`,
     "priority: Medium",
-    "tags: [extracted]",
+    `feature: ${feature || "공통"}`,
+    `suite: ${suite}`,
+    `tags: [${tags.join(", ")}]`,
     "",
     ...steps
   ].join("\n");
@@ -403,6 +410,43 @@ function emitRecorderState() {
     enabled: state.enabled,
     steps: state.steps.map((item) => item.step),
   });
+}
+
+function inferFeatureFromLocation() {
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (!parts.length) return "홈";
+  return parts.map((part) => humanizeSegment(part)).join("/");
+}
+
+function inferSuiteFromLocation() {
+  const path = window.location.pathname;
+  return path === "/" ? "smoke" : "full";
+}
+
+function inferTagsFromLocation() {
+  return ["extracted", ...window.location.pathname.split("/").filter(Boolean)];
+}
+
+function normalizeSuite(value) {
+  const suite = String(value || "").trim().toLowerCase();
+  if (["smoke", "full", "regression", "edge", "custom"].includes(suite)) return suite;
+  return "custom";
+}
+
+function normalizeTags(value) {
+  const list = Array.isArray(value)
+    ? value
+    : String(value || "").split(",");
+  const normalized = list
+    .map((item) => cleanText(item))
+    .filter(Boolean);
+  return normalized.length ? normalized : ["extracted"];
+}
+
+function humanizeSegment(value) {
+  return String(value || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function inferActionType(element) {
