@@ -200,6 +200,10 @@ function initializeAutoUpdate() {
     return;
   }
 
+  if (process.platform === "win32") {
+    autoUpdater.channel = process.arch === "arm64" ? "arm64" : "x64";
+  }
+
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 

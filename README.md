@@ -44,6 +44,7 @@ GitHub Releases를 통한 배포와 앱 내 자동 업데이트를 지원합니�
 - mac 업로드: `npm run publish:mac`
 - Windows x64 업로드: `npm run publish:win:x64`
 - Windows arm64 업로드: `npm run publish:win:arm64`
+- 기본 일괄 업로드: `npm run publish:all` (`mac + Windows x64`)
 
 업로드 전에는 `GH_TOKEN` 환경 변수가 필요합니다.
 
@@ -52,6 +53,19 @@ export GH_TOKEN=your_github_token
 ```
 
 자세한 순서는 [docs/release.md](/Users/una/github/auto-qa/docs/release.md)에서 확인할 수 있습니다.
+
+### 배포 주의사항
+
+- Windows 자동 업데이트는 아키텍처별 채널을 사용합니다. 일반 배포는 `x64`를 기본값으로 두는 것이 안전합니다.
+- macOS에서 외부 사용자에게 배포하려면 Apple Developer ID 서명과 notarization이 필요합니다.
+- macOS 서명/노타리제이션 없이 배포하면 "손상된 앱"으로 보이거나 Gatekeeper에서 차단될 수 있습니다.
+- Windows도 코드 서명이 없으면 SmartScreen 또는 보안 제품이 설치/업데이트를 차단할 수 있습니다.
+
+mac 배포 전 환경 점검:
+
+```bash
+npm run doctor:mac-signing
+```
 
 ## 시나리오 예시
 

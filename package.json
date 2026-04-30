@@ -9,6 +9,7 @@
     "test": "node --test tests/*.test.js",
     "install:browsers": "node scripts/install-browsers.js",
     "release:prepare": "node scripts/prepare-release.js",
+    "doctor:mac-signing": "node scripts/check-mac-signing.js",
     "prebuild": "npm run install:browsers",
     "prebuild:mac": "npm run install:browsers",
     "prebuild:win": "npm run install:browsers",
@@ -24,9 +25,9 @@
     "publish:mac": "electron-builder --mac --publish always",
     "prepublish:win:x64": "npm run install:browsers",
     "prepublish:win:arm64": "npm run install:browsers",
-    "publish:win:x64": "electron-builder --win --x64 --publish always",
-    "publish:win:arm64": "electron-builder --win --arm64 --publish always",
-    "publish:all": "npm run publish:mac && npm run publish:win:x64 && npm run publish:win:arm64"
+    "publish:win:x64": "electron-builder --win --x64 --publish always -c.publish.channel=x64",
+    "publish:win:arm64": "electron-builder --win --arm64 --publish always -c.publish.channel=arm64",
+    "publish:all": "npm run publish:mac && npm run publish:win:x64"
   },
   "keywords": [
     "qa",
@@ -41,6 +42,7 @@
     "playwright": "^1.51.1"
   },
   "devDependencies": {
+    "@electron/notarize": "^2.5.0",
     "electron": "^35.1.5",
     "electron-builder": "^26.0.12"
   },
@@ -66,8 +68,12 @@
         "zip"
       ],
       "category": "public.app-category.developer-tools",
-      "identity": null
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "config/entitlements.mac.plist",
+      "entitlementsInherit": "config/entitlements.mac.plist"
     },
+    "afterSign": "scripts/notarize.js",
     "win": {
       "target": [
         "nsis",
