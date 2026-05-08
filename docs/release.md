@@ -18,13 +18,24 @@ GitHub Personal Access Token이 필요합니다.
 export GH_TOKEN=your_github_token
 ```
 
-macOS 외부 배포까지 하려면 아래 값도 필요합니다.
+macOS 외부 배포까지 하려면 아래 두 방식 중 하나가 필요합니다.
+
+1. Apple ID + 앱 전용 비밀번호
 
 ```bash
 export CSC_NAME="Developer ID Application: Your Name (TEAMID)"
 export APPLE_ID="you@example.com"
 export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
 export APPLE_TEAM_ID="TEAMID"
+```
+
+2. App Store Connect API Key
+
+```bash
+export CSC_NAME="Developer ID Application: Your Name (TEAMID)"
+export APPLE_API_KEY="/absolute/path/AuthKey_XXXXXXXXXX.p8"
+export APPLE_API_KEY_ID="XXXXXXXXXX"
+export APPLE_API_ISSUER="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
 현재 설정에서는 `npm run publish:mac` 실행 시:
@@ -120,6 +131,6 @@ macOS:
 - Windows는 서명되지 않은 설치 파일에서 SmartScreen 또는 백신 차단이 발생할 수 있습니다. 자동 업데이트도 새 설치 프로그램 실행 단계에서 같은 이유로 막힐 수 있습니다.
 - macOS는 서명과 notarization이 없는 앱을 인터넷에서 내려받아 실행하면 "손상되었기 때문에 열 수 없습니다" 또는 유사한 Gatekeeper 경고가 날 수 있습니다.
 - macOS 외부 배포를 정상화하려면 Apple Developer ID Application 인증서와 notarization이 필요합니다.
-- 현재 프로젝트는 `scripts/notarize.js`를 통해 `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`가 설정된 경우 notarization을 수행합니다.
+- 현재 프로젝트는 `scripts/notarize.js`를 통해 Apple ID 방식 또는 App Store Connect API key 방식으로 notarization을 수행합니다.
 - `npm run doctor:mac-signing`으로 현재 셸의 mac 배포 필수 환경변수를 점검할 수 있습니다.
 - GitHub 저장소가 비공개라면 기본 GitHub auto-update 방식으로는 최종 사용자 앱이 업데이트를 읽기 어렵습니다. 이 경우 공개 릴리스로 전환하거나 `generic` provider 같은 별도 배포 경로가 필요합니다.

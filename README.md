@@ -53,6 +53,7 @@ export GH_TOKEN=your_github_token
 ```
 
 자세한 순서는 [docs/release.md](/Users/una/github/auto-qa/docs/release.md)에서 확인할 수 있습니다.
+mac 공개 배포 체크리스트는 [docs/mac-distribution.md](/Users/una/github/auto-qa/docs/mac-distribution.md)에서 확인할 수 있습니다.
 
 ### 배포 주의사항
 

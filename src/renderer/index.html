@@ -6,43 +6,68 @@
   <title>AutoQA</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
+<body data-season="spring">
   <main class="app">
-    <header class="global-nav-shell">
+    <header class="topbar">
+      <button id="homeBrand" class="brand-mark brand-button" type="button" aria-label="홈으로 이동">
+        <div class="brand-seal">U</div>
+        <div class="brand-copy">
+          <p class="eyebrow">Auto QA Workspace</p>
+          <strong>AutoQA</strong>
+        </div>
+      </button>
+
       <nav class="global-nav" aria-label="주요 메뉴">
         <button id="navScenarioPage" class="nav-pill" type="button">시나리오 생성</button>
+        <button id="navFlowPage" class="nav-pill" type="button">Flow Chart</button>
         <button id="navQaPage" class="nav-pill primary-nav" type="button">QA 실행</button>
       </nav>
     </header>
 
     <section id="homePage" class="page page-home">
       <section class="hero-card">
-        <div class="hero-stars" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
+        <div class="hero-orbit" aria-hidden="true">
+          <span class="orbit-line orbit-line-one"></span>
+          <span class="orbit-line orbit-line-two"></span>
+          <span class="orbit-line orbit-line-three"></span>
+          <span class="season-glow season-glow-a"></span>
+          <span class="season-glow season-glow-b"></span>
         </div>
-        <div class="hero-copy">
-          <p class="eyebrow">URL 기반 클라이언트 QA 자동화</p>
-          <h1>AutoQA</h1>
-          <p class="hero-description">
-            PM, Designer, Developer, QA가 같은 흐름 안에서 시나리오를 작성하고
-            검토하며 실행할 수 있는 통합 QA 워크스페이스입니다.
-          </p>
-          <div class="hero-inline-actions">
-            <button id="homeScenarioCta" class="secondary compact-button" type="button">시나리오 생성으로 이동</button>
-            <button id="homeQaCta" class="primary compact-button" type="button">QA 실행으로 이동</button>
-            <button id="openGuide" class="ghost compact-button" type="button">가이드</button>
+
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">사용자 친화적인 QA 오케스트레이션</p>
+            <h1>Auto QA</h1>
+            <p class="hero-description">
+              웹 서비스 QA 자동화를 위해 시나리오를 수집하고 실행하며, 진행 상태와 결과 리포트를
+              한 흐름에서 빠르게 확인할 수 있도록 만든 통합 워크스페이스입니다.
+            </p>
+
+            <div class="hero-inline-actions">
+              <button id="homeScenarioCta" class="secondary compact-button" type="button">시나리오 설계 시작</button>
+              <button id="homeQaCta" class="primary compact-button" type="button">즉시 QA 실행</button>
+              <button id="openGuide" class="ghost compact-button" type="button">온보딩 가이드</button>
+            </div>
+
           </div>
+
+          <aside class="theme-panel" aria-label="계절 테마 선택">
+            <div class="season-selector" role="list">
+              <button class="season-chip active" type="button" data-season="spring" aria-label="봄 테마"></button>
+              <button class="season-chip" type="button" data-season="summer" aria-label="여름 테마"></button>
+              <button class="season-chip" type="button" data-season="autumn" aria-label="가을 테마"></button>
+              <button class="season-chip" type="button" data-season="winter" aria-label="겨울 테마"></button>
+            </div>
+          </aside>
         </div>
       </section>
 
       <section class="history-panel">
         <div class="section-head">
-          <h2>QA 히스토리 & 인사이트</h2>
+          <div>
+            <p class="eyebrow small">History & Signals</p>
+            <h2>QA 히스토리와 위험 신호</h2>
+          </div>
           <span id="historySummary">아직 저장된 실행 이력이 없습니다.</span>
         </div>
         <div class="history-grid">
@@ -67,15 +92,41 @@
       <section class="page-card builder-card">
         <div class="section-head">
           <div>
-            <p class="eyebrow small">Scenario Builder</p>
+            <p class="eyebrow small">Scenario Atelier</p>
             <h2>시나리오 생성</h2>
+            <span>대상 URL을 기준으로 흐름을 수집하고, 운영 품질 관점에서 정리된 시나리오를 완성합니다.</span>
           </div>
-          <button id="backFromScenario" class="ghost compact-button" type="button">메인으로</button>
         </div>
+
+        <div class="page-intro-grid">
+          <article class="intro-card">
+            <strong>추출 중심 작성</strong>
+            <p>실제 페이지에서 액션을 수집한 뒤 Markdown 시나리오로 정리합니다.</p>
+          </article>
+          <article class="intro-card">
+            <strong>직접 편집 허용</strong>
+            <p>팀의 언어에 맞춰 문장을 손보거나 구조를 재배치할 수 있습니다.</p>
+          </article>
+          <article class="intro-card">
+            <strong>운영 전환 준비</strong>
+            <p>저장한 시나리오는 QA 실행 콘솔과 바로 공유됩니다.</p>
+          </article>
+        </div>
+
         <div class="builder-toolbar">
-          <label class="field grow">
+          <label class="field url-field grow">
             <span>대상 URL</span>
-            <input id="scenarioBaseUrl" type="url" placeholder="https://example.com" autocomplete="url">
+            <div class="url-input-wrap">
+              <input id="scenarioBaseUrl" type="url" placeholder="https://example.com" autocomplete="url">
+              <button id="toggleScenarioUrlHistory" class="history-trigger" type="button" aria-label="이전 기록 불러오기">이전 기록 불러오기</button>
+            </div>
+            <div id="scenarioUrlHistoryMenu" class="url-history-menu hidden" aria-label="이전 URL 기록">
+              <div class="url-history-head">
+                <strong>이전 기록</strong>
+                <button id="clearScenarioUrlHistory" class="ghost compact-button" type="button">전체 삭제</button>
+              </div>
+              <div id="scenarioUrlHistoryList" class="url-history-list"></div>
+            </div>
           </label>
           <div class="builder-actions">
             <button id="extractScenario" class="secondary" type="button">시나리오 추출</button>
@@ -83,16 +134,204 @@
             <button id="saveScenario" class="primary" type="button">저장</button>
           </div>
         </div>
+
         <div class="editor-wrap standalone">
           <div class="section-head">
-            <h2>QA 시나리오</h2>
-            <span id="scenarioFile">직접 작성 또는 Markdown/JSON 파일 불러오기</span>
+            <div>
+              <h2>QA 시나리오</h2>
+              <span id="scenarioFile">직접 작성 또는 Markdown/JSON 파일 불러오기</span>
+            </div>
             <button id="toggleScenarioAccordion" class="secondary compact-button" type="button">접기</button>
           </div>
           <div id="scenarioAccordion" class="scenario-accordion open">
             <textarea id="scenarioText" spellcheck="false" placeholder="시나리오를 직접 편집하거나 화면에서 추출해보세요."></textarea>
           </div>
         </div>
+
+      </section>
+    </section>
+
+    <section id="flowPage" class="page hidden">
+      <section class="page-card flow-page-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow small">Flow Builder</p>
+            <h2>Flow Chart</h2>
+            <span>시나리오 생성, QA 실행과 분리된 독립 편집 화면에서 흐름도를 설계하고 시나리오와 서로 변환할 수 있습니다.</span>
+          </div>
+          <div class="flow-builder-actions">
+            <button id="buildFlowFromScenario" class="secondary compact-button" type="button">시나리오에서 차트 생성</button>
+            <button id="generateScenarioFromFlow" class="primary compact-button" type="button">차트에서 시나리오 추출</button>
+          </div>
+        </div>
+
+        <section class="flow-builder-panel">
+          <div class="flow-builder-layout">
+            <aside class="flow-toolbox">
+              <div class="flow-panel-head">
+                <strong>도형 카탈로그</strong>
+                <span>드래그 없이 바로 배치</span>
+              </div>
+
+              <div class="flow-tool-group">
+                <div class="flow-shape-library">
+                  <button class="flow-shape-card active" type="button" data-flow-shape-card="start">
+                    <span class="flow-shape-preview flow-shape-preview-start"></span>
+                    <strong>시작 / 종료</strong>
+                    <small>흐름의 진입점, 종착점</small>
+                  </button>
+                  <button class="flow-shape-card" type="button" data-flow-shape-card="process">
+                    <span class="flow-shape-preview flow-shape-preview-process"></span>
+                    <strong>액션 / 프로세스</strong>
+                    <small>화면 동작, 입력, 검증</small>
+                  </button>
+                  <button class="flow-shape-card" type="button" data-flow-shape-card="decision">
+                    <span class="flow-shape-preview flow-shape-preview-decision"></span>
+                    <strong>판단 / 분기</strong>
+                    <small>예/아니오, 성공/실패 분기</small>
+                  </button>
+                  <button class="flow-shape-card" type="button" data-flow-shape-card="preparation">
+                    <span class="flow-shape-preview flow-shape-preview-check"></span>
+                    <strong>검증 / 확인</strong>
+                    <small>Then 결과 검증</small>
+                  </button>
+                  <button class="flow-shape-card" type="button" data-flow-shape-card="input">
+                    <span class="flow-shape-preview flow-shape-preview-input"></span>
+                    <strong>입력 / 데이터</strong>
+                    <small>데이터 입력, 저장 흐름</small>
+                  </button>
+                </div>
+
+                <label class="flow-select-field hidden">
+                  <span>도형 종류</span>
+                  <select id="flowShapeType">
+                    <optgroup label="흐름 기본">
+                      <option value="start">시작 / Terminator</option>
+                      <option value="process" selected>프로세스 / Action</option>
+                      <option value="decision">판단 / Decision</option>
+                      <option value="end">종료 / Terminator</option>
+                    </optgroup>
+                    <optgroup label="입출력 / 문서">
+                      <option value="input">입력 / 출력</option>
+                      <option value="document">문서</option>
+                      <option value="manualInput">수동 입력</option>
+                    </optgroup>
+                    <optgroup label="시스템 / 저장">
+                      <option value="predefinedProcess">사전정의 프로세스</option>
+                      <option value="database">데이터베이스</option>
+                      <option value="preparation">준비 / Preparation</option>
+                    </optgroup>
+                  </select>
+                </label>
+                <button id="addFlowNode" class="secondary" type="button">선택 도형 추가</button>
+              </div>
+
+              <div class="flow-tool-group">
+                <strong>연결과 정리</strong>
+                <div class="flow-tool-buttons flow-tool-buttons-stack">
+                  <button id="toggleConnectMode" class="flow-tool-button" type="button">포트 연결 모드</button>
+                  <button id="clearFlowChart" class="flow-tool-button" type="button">전체 초기화</button>
+                </div>
+              </div>
+
+              <div class="flow-tool-group flow-guide-card">
+                <strong id="flowGuideTitle">액션 도형</strong>
+                <p id="flowGuideDescription">사용자가 실제로 수행하거나 시스템이 처리하는 동작을 적습니다. 예: 로그인 버튼 클릭, 장바구니 추가.</p>
+              </div>
+
+              <div class="flow-tool-group flow-guide-card">
+                <strong>도형 사용법</strong>
+                <ul class="flow-guide-list">
+                  <li><span>시작</span><small>흐름의 진입점</small></li>
+                  <li><span>액션</span><small>화면 동작, 입력, 검증</small></li>
+                  <li><span>판단</span><small>예/아니오, 성공/실패 분기</small></li>
+                  <li><span>입력/문서/DB</span><small>데이터 입출력, 문서 처리, 저장 흐름</small></li>
+                </ul>
+              </div>
+            </aside>
+
+            <div class="flow-workspace">
+              <div class="flow-stage-shell">
+                <div class="flow-stage-head">
+                  <div class="flow-stage-tabs" aria-hidden="true">
+                    <span class="flow-stage-tab">시나리오에서 차트 생성</span>
+                    <span class="flow-stage-tab">차트에서 시나리오 추출</span>
+                  </div>
+                  <span id="flowSelectionStatus">도형을 선택하고 추가하세요.</span>
+                  <div class="flow-stage-head-actions">
+                    <span id="flowConnectStatus">연결 모드 꺼짐</span>
+                    <div class="flow-zoom-controls">
+                      <button id="zoomOutFlow" class="flow-tool-button" type="button" aria-label="축소">-</button>
+                      <span id="flowZoomLabel">100%</span>
+                      <button id="zoomInFlow" class="flow-tool-button" type="button" aria-label="확대">+</button>
+                      <button id="resetFlowZoom" class="flow-tool-button" type="button">기본 배율</button>
+                    </div>
+                  </div>
+                </div>
+                <div id="flowCanvasViewport" class="flow-canvas-viewport">
+                  <div id="flowCanvas" class="flow-canvas" aria-label="플로우 차트 편집 영역">
+                    <svg id="flowEdgeLayer" class="flow-edge-layer" aria-hidden="true"></svg>
+                    <div id="flowNodeLayer" class="flow-node-layer"></div>
+                  </div>
+                </div>
+              </div>
+
+              <aside id="flowPropertiesPanel" class="flow-properties-panel">
+                <div class="flow-panel-head">
+                  <strong>속성</strong>
+                  <button id="closeFlowDrawer" class="flow-panel-menu" type="button" aria-label="속성 닫기">...</button>
+                </div>
+
+                <div class="flow-tool-group">
+                  <label class="flow-select-field">
+                    <span>레이블</span>
+                    <textarea id="flowNodeLabelInput" class="flow-textarea" rows="3" placeholder="예: 로그인 페이지 접속"></textarea>
+                  </label>
+                </div>
+
+                <div class="flow-tool-group">
+                  <label class="flow-select-field">
+                    <span>노드 타입</span>
+                    <select id="flowNodeTypeSelect">
+                      <option value="start">시작 / 종료</option>
+                      <option value="process">액션 / 프로세스</option>
+                      <option value="decision">판단 / 분기</option>
+                      <option value="end">종료</option>
+                      <option value="input">입력 / 데이터</option>
+                      <option value="document">문서</option>
+                      <option value="manualInput">수동 입력</option>
+                      <option value="predefinedProcess">사전정의 프로세스</option>
+                      <option value="database">데이터베이스</option>
+                      <option value="preparation">검증 / 준비</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="flow-tool-group">
+                  <span class="flow-property-label">색상</span>
+                  <div id="flowColorPalette" class="flow-color-palette">
+                    <button class="flow-color-swatch active" type="button" data-flow-color="#2fbf89" style="--swatch:#2fbf89" aria-label="민트"></button>
+                    <button class="flow-color-swatch" type="button" data-flow-color="#2f6fe4" style="--swatch:#2f6fe4" aria-label="파랑"></button>
+                    <button class="flow-color-swatch" type="button" data-flow-color="#5a43c3" style="--swatch:#5a43c3" aria-label="보라"></button>
+                    <button class="flow-color-swatch" type="button" data-flow-color="#6a5a20" style="--swatch:#6a5a20" aria-label="올리브"></button>
+                    <button class="flow-color-swatch" type="button" data-flow-color="#5d2f36" style="--swatch:#5d2f36" aria-label="와인"></button>
+                    <button class="flow-color-swatch" type="button" data-flow-color="#2b2d33" style="--swatch:#2b2d33" aria-label="차콜"></button>
+                    <button class="flow-color-swatch" type="button" data-flow-color="#5c3a12" style="--swatch:#5c3a12" aria-label="브라운"></button>
+                    <button class="flow-color-swatch" type="button" data-flow-color="#24204c" style="--swatch:#24204c" aria-label="인디고"></button>
+                    <button class="flow-color-swatch" type="button" data-flow-color="#4c62f3" style="--swatch:linear-gradient(135deg,#1fd0b5,#4c62f3)" aria-label="그라디언트"></button>
+                  </div>
+                  <label class="flow-select-field">
+                    <span>커스텀 색상</span>
+                    <input id="flowCustomColor" type="color" value="#2f6fe4">
+                  </label>
+                  <button id="applyFlowColor" class="flow-tool-button" type="button">선택 도형에 색상 적용</button>
+                </div>
+
+                <button id="deleteFlowSelection" class="flow-delete-button" type="button">삭제</button>
+              </aside>
+            </div>
+          </div>
+        </section>
       </section>
     </section>
 
@@ -111,11 +350,12 @@
       <section class="page-card">
         <div class="section-head">
           <div>
-            <p class="eyebrow small">Execution Console</p>
+            <p class="eyebrow small">Execution Lounge</p>
             <h2>QA 실행</h2>
+            <span>실행 옵션, 진행률, 미리보기, 결과 요약을 하나의 흐름으로 정리했습니다.</span>
           </div>
-          <button id="backFromQa" class="ghost compact-button" type="button">메인으로</button>
         </div>
+
         <section class="run-panel">
           <label class="field url-field grow">
             <span>테스트 대상 URL</span>
@@ -149,8 +389,10 @@
         <section class="workspace">
           <div class="editor-wrap">
             <div class="section-head">
-              <h2>실행 대상 시나리오</h2>
-              <span>불러온 시나리오를 확인한 뒤 실행할 수 있습니다.</span>
+              <div>
+                <h2>실행 대상 시나리오</h2>
+                <span>불러온 시나리오를 확인한 뒤 실행할 수 있습니다.</span>
+              </div>
               <button id="openScenarioQa" class="secondary compact-button" type="button">시나리오 불러오기</button>
             </div>
             <div class="scenario-accordion open">
@@ -174,8 +416,10 @@
 
           <aside class="results">
             <div class="section-head">
-              <h2>실행 결과</h2>
-              <span id="statusText">대기 중</span>
+              <div>
+                <h2>실행 결과</h2>
+                <span id="statusText">대기 중</span>
+              </div>
             </div>
             <div class="metrics">
               <div><span>전체</span><strong id="totalCount">0</strong></div>
