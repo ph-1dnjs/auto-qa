@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body data-season="spring">
+  <div class="viewport-drag-gap" aria-hidden="true"></div>
   <main class="app">
     <header class="topbar">
       <button id="homeBrand" class="brand-mark brand-button" type="button" aria-label="홈으로 이동">
@@ -453,7 +454,12 @@
           <h2>시나리오 추출</h2>
           <span id="extractorUrl">대상 URL이 여기에 표시됩니다</span>
         </div>
-        <button id="closeExtractor" class="secondary" type="button">닫기</button>
+        <div class="extractor-toolbar-actions">
+          <button id="toggleExtractorSidebar" class="secondary" type="button" aria-expanded="false">
+            도구 열기
+          </button>
+          <button id="closeExtractor" class="secondary" type="button">닫기</button>
+        </div>
       </div>
       <div class="extractor-content">
         <div class="extractor-webview-stage">

@@ -1,3 +1,5 @@
+document.body.dataset.platform = navigator.userAgent.includes("Mac") ? "mac" : "default";
+
 const elements = {
   homePage: document.querySelector("#homePage"),
   scenarioPage: document.querySelector("#scenarioPage"),
@@ -77,6 +79,7 @@ const elements = {
   extractorUrl: document.querySelector("#extractorUrl"),
   extractorWebview: document.querySelector("#extractorWebview"),
   extractorResizeOverlay: document.querySelector("#extractorResizeOverlay"),
+  toggleExtractorSidebar: document.querySelector("#toggleExtractorSidebar"),
   extractorScenarioPreview: document.querySelector("#extractorScenarioPreview"),
   extractorScenarioCount: document.querySelector("#extractorScenarioCount"),
   saveExtractorScenario: document.querySelector("#saveExtractorScenario"),
@@ -123,6 +126,7 @@ let extractorResizeObserver = null;
 let extractorFrameObserver = null;
 let extractorViewportSyncTimer = null;
 let extractorResizeSettledTimer = null;
+let extractorSidebarOpen = false;
 let currentPage = "home";
 const urlHistoryStorageKey = "autoqa.baseUrlHistory";
 const maxUrlHistoryItems = 6;
@@ -407,6 +411,9 @@ elements.extractorCommitScenario.addEventListener("click", () => {
     tags: elements.extractorRecorderTags.value,
   });
 });
+elements.toggleExtractorSidebar.addEventListener("click", () => {
+  toggleExtractorSidebar();
+});
 
 elements.extractScenario.addEventListener("click", async () => {
   const config = await window.autoqa.openScenarioExtractor({
@@ -416,6 +423,12 @@ elements.extractScenario.addEventListener("click", async () => {
 });
 
 elements.closeExtractor.addEventListener("click", closeEmbeddedExtractor);
+elements.extractorShell.addEventListener("click", (event) => {
+  if (!isExtractorCompactLayout() || !extractorSidebarOpen) return;
+  if (event.target.closest(".extractor-sidebar")) return;
+  if (event.target.closest("#toggleExtractorSidebar")) return;
+  setExtractorSidebarOpen(false);
+});
 
 elements.runQa.addEventListener("click", async () => {
   activeRunId = `run-${Date.now()}`;
@@ -1160,6 +1173,8 @@ function openEmbeddedExtractor(config) {
   elements.extractorWebview.removeAttribute("src");
   elements.extractorShell.classList.remove("hidden");
   document.body.classList.add("extractor-open");
+  setExtractorSidebarOpen(false);
+  syncExtractorResponsiveLayout();
   setExtractorResizeLoading(false);
   startExtractorSizing();
   window.addEventListener("resize", handleExtractorWindowResize);
@@ -1234,6 +1249,7 @@ function closeEmbeddedExtractor() {
   elements.extractorWebview.removeAttribute("src");
   elements.extractorShell.classList.add("hidden");
   document.body.classList.remove("extractor-open");
+  setExtractorSidebarOpen(false);
   window.removeEventListener("resize", handleExtractorWindowResize);
   setExtractorResizeLoading(false);
   stopExtractorSizing();
@@ -1609,6 +1625,7 @@ function stopExtractorSizing() {
 }
 
 function runExtractorViewportRender() {
+  syncExtractorResponsiveLayout();
   sizeExtractorWebview();
   if (extractorViewportSyncTimer) {
     window.clearTimeout(extractorViewportSyncTimer);
@@ -1620,6 +1637,7 @@ function runExtractorViewportRender() {
 
 function handleExtractorWindowResize() {
   if (elements.extractorShell.classList.contains("hidden")) return;
+  syncExtractorResponsiveLayout();
 
   const webview = elements.extractorWebview;
 
@@ -1667,6 +1685,38 @@ function forceIframeReflow(webview) {
 
 function setExtractorResizeLoading(isLoading) {
   elements.extractorResizeOverlay.classList.toggle("hidden", !isLoading);
+}
+
+function isExtractorCompactLayout() {
+  return elements.extractorShell.clientWidth <= 1180;
+}
+
+function syncExtractorResponsiveLayout() {
+  const isCompact = isExtractorCompactLayout();
+  elements.extractorShell.classList.toggle("compact", isCompact);
+  if (!isCompact) {
+    extractorSidebarOpen = false;
+  }
+  elements.extractorShell.classList.toggle(
+    "sidebar-open",
+    isCompact && extractorSidebarOpen,
+  );
+  elements.toggleExtractorSidebar.hidden = !isCompact;
+  elements.toggleExtractorSidebar.textContent =
+    isCompact && extractorSidebarOpen ? "도구 닫기" : "도구 열기";
+  elements.toggleExtractorSidebar.setAttribute(
+    "aria-expanded",
+    isCompact && extractorSidebarOpen ? "true" : "false",
+  );
+}
+
+function setExtractorSidebarOpen(nextOpen) {
+  extractorSidebarOpen = Boolean(nextOpen);
+  syncExtractorResponsiveLayout();
+}
+
+function toggleExtractorSidebar() {
+  setExtractorSidebarOpen(!extractorSidebarOpen);
 }
 
 function sizeExtractorWebview() {
