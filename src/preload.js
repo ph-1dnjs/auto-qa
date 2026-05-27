@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("autoqa", {
   loadHistory: () => ipcRenderer.invoke("qa:history"),
   run: (payload) => ipcRenderer.invoke("qa:run", payload),
   cancel: (runId) => ipcRenderer.invoke("qa:cancel", runId),
+  exportFailures: (payload) => ipcRenderer.invoke("qa:export-failures", payload),
   openReport: (filePath) => ipcRenderer.invoke("report:open", filePath),
   onProgress: (callback) => {
     const listener = (_event, progress) => callback(progress);

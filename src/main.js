@@ -15,6 +15,7 @@ if (packagedBrowserPath && hasUsablePackagedBrowser(packagedBrowserPath)) {
 const { runAutoQa } = require("./autoqa/runner");
 const { analyzeImpact, buildFeatureMap, prepareScenarios } = require("./autoqa/planner");
 const { appendHistory, loadHistory, summarizeHistory } = require("./autoqa/history");
+const { getFailureExportDefaultName, writeFailureExport } = require("./autoqa/failure-export");
 
 let mainWindow;
 const activeRuns = new Map();
@@ -179,6 +180,40 @@ ipcMain.handle("qa:cancel", async (_event, runId) => {
   token.cancelled = true;
   await token.browser?.close().catch(() => {});
   return true;
+});
+
+ipcMain.handle("qa:export-failures", async (_event, payload) => {
+  const format = payload?.format === "md" ? "md" : "excel";
+  const summary = payload?.summary || {};
+  const results = Array.isArray(payload?.results) ? payload.results : [];
+  const failedCount = results.filter((result) => result?.status === "failed").length;
+
+  if (!failedCount) {
+    throw new Error("내보낼 실패 시나리오가 없습니다.");
+  }
+
+  const isMarkdown = format === "md";
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "실패 시나리오 내보내기",
+    defaultPath: getFailureExportDefaultName(summary, isMarkdown ? "md" : "excel"),
+    filters: isMarkdown
+      ? [{ name: "Markdown", extensions: ["md"] }]
+      : [{ name: "Excel CSV", extensions: ["csv"] }],
+  });
+
+  if (result.canceled || !result.filePath) return null;
+
+  const expectedExtension = isMarkdown ? ".md" : ".csv";
+  const filePath = path.extname(result.filePath)
+    ? result.filePath
+    : `${result.filePath}${expectedExtension}`;
+
+  return writeFailureExport({
+    summary,
+    results,
+    format: isMarkdown ? "md" : "excel",
+    filePath
+  });
 });
 
 ipcMain.handle("report:open", async (_event, filePath) => {

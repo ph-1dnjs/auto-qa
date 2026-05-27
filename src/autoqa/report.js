@@ -43,6 +43,8 @@ function renderHtml(summary, results) {
         <td>${escapeHtml(result.title)}</td>
         <td><span class="pill ${result.status}">${escapeHtml(result.status)}</span></td>
         <td>${escapeHtml(result.durationMs)}ms</td>
+        <td>${escapeHtml(result.failureReason || "")}</td>
+        <td>${escapeHtml(result.detectionPoint || "")}</td>
         <td>${escapeHtml(result.error || "")}</td>
         <td>${screenshot}</td>
       </tr>`;
@@ -90,7 +92,7 @@ function renderHtml(summary, results) {
     </section>
     ${environmentCards ? `<section class="environment-grid">${environmentCards}</section>` : ""}
     <table>
-      <thead><tr><th>환경</th><th>Feature</th><th>Suite</th><th>시나리오</th><th>상태</th><th>시간</th><th>오류</th><th>증거</th></tr></thead>
+      <thead><tr><th>환경</th><th>Feature</th><th>Suite</th><th>시나리오</th><th>상태</th><th>시간</th><th>실패 사유</th><th>발견 지점</th><th>오류</th><th>증거</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   </main>

@@ -420,6 +420,13 @@ async function runHealthCheck(context, baseUrl, artifactsDir, onPreview, environ
     await onPreview?.(page, "기본 URL 상태 점검 실패", { previewStatus: "failed" });
     const screenshot = path.join(artifactsDir, "health-check.png");
     await page.screenshot({ path: screenshot, fullPage: true }).catch(() => {});
+    const failure = describeFailure({
+      error,
+      page,
+      failedStep: "기본 URL 상태 점검",
+      detectionPointLabel: "기본 URL 상태 점검",
+      fallbackUrl: baseUrl
+    });
     return {
       id: "health-check",
       title: "기본 URL 상태 점검",
@@ -430,6 +437,10 @@ async function runHealthCheck(context, baseUrl, artifactsDir, onPreview, environ
       status: "failed",
       durationMs: Date.now() - started,
       error: error.message,
+      failedStep: failure.failedStep,
+      failureReason: failure.failureReason,
+      detectionPoint: failure.detectionPoint,
+      currentUrl: failure.currentUrl,
       screenshot
     };
   } finally {
@@ -440,11 +451,16 @@ async function runHealthCheck(context, baseUrl, artifactsDir, onPreview, environ
 async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview, environment) {
   const started = Date.now();
   const page = await context.newPage();
+  let currentStep = null;
+  let currentStepIndex = -1;
 
   try {
     await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
     await onPreview?.(page, `${scenario.title} 시작`);
-    for (const step of scenario.steps) {
+    for (let index = 0; index < scenario.steps.length; index += 1) {
+      const step = scenario.steps[index];
+      currentStep = step;
+      currentStepIndex = index;
       await executeStep(page, baseUrl, step, artifactsDir, scenario.id);
       await page.waitForLoadState("networkidle", { timeout: 3000 }).catch(() => {});
       await onPreview?.(page, `${scenario.title} · ${formatStepPreview(step)}`);
@@ -467,6 +483,16 @@ async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview, 
     const safeId = scenario.id.replace(/[^a-z0-9_-]/gi, "-");
     const screenshot = path.join(artifactsDir, `${safeId}.png`);
     await page.screenshot({ path: screenshot, fullPage: true }).catch(() => {});
+    const failedStep = currentStep ? formatStepPreview(currentStep) : "시나리오 시작 준비";
+    const failure = describeFailure({
+      error,
+      page,
+      failedStep,
+      detectionPointLabel: currentStep
+        ? `${scenario.title} / 단계 ${currentStepIndex + 1}`
+        : `${scenario.title} / 시작 준비`,
+      fallbackUrl: baseUrl
+    });
     return {
       id: scenario.id,
       title: scenario.title,
@@ -479,6 +505,10 @@ async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview, 
       status: "failed",
       durationMs: Date.now() - started,
       error: error.message,
+      failedStep: failure.failedStep,
+      failureReason: failure.failureReason,
+      detectionPoint: failure.detectionPoint,
+      currentUrl: failure.currentUrl,
       screenshot
     };
   } finally {
@@ -815,6 +845,48 @@ async function collectValidationText(page) {
 
 function cssEscape(value) {
   return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function describeFailure({ error, page, failedStep, detectionPointLabel, fallbackUrl = "" }) {
+  const currentUrl = safePageUrl(page) || fallbackUrl;
+  return {
+    failedStep,
+    currentUrl,
+    failureReason: extractFailureReason(error, failedStep),
+    detectionPoint: [detectionPointLabel, currentUrl ? `화면 ${currentUrl}` : ""]
+      .filter(Boolean)
+      .join(" / ")
+  };
+}
+
+function extractFailureReason(error, failedStep) {
+  const message = String(error?.message || "").replace(/\s+/g, " ").trim();
+  if (!message) return failedStep ? `${failedStep} 단계에서 실패했습니다.` : "실패 사유를 확인하지 못했습니다.";
+  if (/Timeout/i.test(message)) {
+    return failedStep
+      ? `${failedStep} 단계가 제한 시간 안에 완료되지 않았습니다.`
+      : "요청이 제한 시간 안에 완료되지 않았습니다.";
+  }
+  if (/현재 URL에 .+ 포함되지 않습니다/.test(message)) {
+    return "예상한 URL로 이동하지 못했습니다.";
+  }
+  if (/지원하지 않는 액션/.test(message)) {
+    return "시나리오에 지원하지 않는 액션이 포함되어 있습니다.";
+  }
+  if (/strict mode|locator|selector|Element is not attached|No node found/i.test(message)) {
+    return failedStep
+      ? `${failedStep} 단계에서 필요한 요소를 찾지 못했습니다.`
+      : "필요한 요소를 찾지 못했습니다.";
+  }
+  return message;
+}
+
+function safePageUrl(page) {
+  try {
+    return typeof page?.url === "function" ? page.url() : "";
+  } catch {
+    return "";
+  }
 }
 
 module.exports = {

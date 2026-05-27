@@ -39,7 +39,6 @@ const elements = {
   flowShapeType: document.querySelector("#flowShapeType"),
   flowShapeCards: Array.from(document.querySelectorAll("[data-flow-shape-card]")),
   addFlowNode: document.querySelector("#addFlowNode"),
-  toggleConnectMode: document.querySelector("#toggleConnectMode"),
   deleteFlowSelection: document.querySelector("#deleteFlowSelection"),
   clearFlowChart: document.querySelector("#clearFlowChart"),
   flowColorPalette: document.querySelector("#flowColorPalette"),
@@ -48,8 +47,14 @@ const elements = {
   applyFlowColor: document.querySelector("#applyFlowColor"),
   flowPropertiesPanel: document.querySelector("#flowPropertiesPanel"),
   closeFlowDrawer: document.querySelector("#closeFlowDrawer"),
+  flowNodeProperties: document.querySelector("#flowNodeProperties"),
+  flowEdgeProperties: document.querySelector("#flowEdgeProperties"),
   flowNodeLabelInput: document.querySelector("#flowNodeLabelInput"),
+  flowEdgeLabelInput: document.querySelector("#flowEdgeLabelInput"),
   flowNodeTypeSelect: document.querySelector("#flowNodeTypeSelect"),
+  flowNodeFontSizeInput: document.querySelector("#flowNodeFontSizeInput"),
+  flowNodeWidthInput: document.querySelector("#flowNodeWidthInput"),
+  flowNodeHeightInput: document.querySelector("#flowNodeHeightInput"),
   flowGuideTitle: document.querySelector("#flowGuideTitle"),
   flowGuideDescription: document.querySelector("#flowGuideDescription"),
   flowSelectionStatus: document.querySelector("#flowSelectionStatus"),
@@ -107,6 +112,9 @@ const elements = {
   passCount: document.querySelector("#passCount"),
   failCount: document.querySelector("#failCount"),
   resultList: document.querySelector("#resultList"),
+  failureExportField: document.querySelector("#failureExportField"),
+  failureExportFormat: document.querySelector("#failureExportFormat"),
+  exportFailures: document.querySelector("#exportFailures"),
   openReport: document.querySelector("#openReport"),
   historySummary: document.querySelector("#historySummary"),
   historyRunCount: document.querySelector("#historyRunCount"),
@@ -118,6 +126,7 @@ const elements = {
 };
 
 let latestReportPath = null;
+let latestRunResult = null;
 let activeRunId = null;
 let runStartedAt = 0;
 let progressTimer = null;
@@ -132,6 +141,7 @@ const urlHistoryStorageKey = "autoqa.baseUrlHistory";
 const maxUrlHistoryItems = 6;
 const themeStorageKey = "autoqa.selectedSeason";
 const seasonThemeMap = { spring: true, summer: true, autumn: true, winter: true };
+const isFlowChartEnabled = false;
 const flowGuides = {
   start: {
     title: "시작 도형",
@@ -174,26 +184,27 @@ const flowGuides = {
     description: "본격적인 행동 전에 필요한 세팅, 초기화, 조건 맞춤 단계를 표시합니다.",
   },
 };
+const flowGridUnit = 24;
 const flowShapeTemplates = {
-  start: { width: 220, height: 88, label: "시작", defaultColor: "#2fbf89" },
-  end: { width: 220, height: 88, label: "종료", defaultColor: "#2fbf89" },
-  process: { width: 240, height: 104, label: "When 동작을 입력", defaultColor: "#2f6fe4" },
-  decision: { width: 180, height: 180, label: "조건 확인", defaultColor: "#5a43c3" },
-  input: { width: 240, height: 104, label: "입력 / 출력", defaultColor: "#c38b1f" },
-  document: { width: 240, height: 112, label: "문서 처리", defaultColor: "#8e98ac" },
-  manualInput: { width: 240, height: 104, label: "수동 입력", defaultColor: "#5e55d8" },
-  predefinedProcess: { width: 248, height: 104, label: "공통 프로세스", defaultColor: "#34767f" },
-  database: { width: 220, height: 120, label: "데이터 저장", defaultColor: "#2b7a61" },
-  preparation: { width: 220, height: 104, label: "준비 단계", defaultColor: "#2f8f5e" },
+  start: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "시작", defaultColor: "#2fbf89" },
+  end: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "종료", defaultColor: "#2fbf89" },
+  process: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "When 동작을 입력", defaultColor: "#2f6fe4" },
+  decision: { width: flowGridUnit * 5, height: flowGridUnit * 5, label: "조건 확인", defaultColor: "#5a43c3" },
+  input: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "입력 / 출력", defaultColor: "#c38b1f" },
+  document: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "문서 처리", defaultColor: "#8e98ac" },
+  manualInput: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "수동 입력", defaultColor: "#5e55d8" },
+  predefinedProcess: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "공통 프로세스", defaultColor: "#34767f" },
+  database: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "데이터 저장", defaultColor: "#2b7a61" },
+  preparation: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "준비 단계", defaultColor: "#2f8f5e" },
 };
 const flowBuilder = {
-  gridSize: 24,
+  gridSize: flowGridUnit,
   width: 1680,
   height: 960,
   tool: "process",
-  connectMode: false,
   connectSource: null,
   selectedNodeId: null,
+  selectedEdgeId: null,
   nodes: [],
   edges: [],
   nextNodeId: 1,
@@ -202,6 +213,18 @@ const flowBuilder = {
   selectedColor: "#3393ea",
 };
 let flowDragState = null;
+
+function getDefaultFlowFontSize(type) {
+  return type === "decision" ? 13 : 16;
+}
+
+function getFlowNodeMinWidth(type) {
+  return type === "decision" ? flowGridUnit * 4 : flowGridUnit * 3;
+}
+
+function getFlowNodeMinHeight(type) {
+  return type === "decision" ? flowGridUnit * 4 : flowGridUnit * 3;
+}
 
 initializeGuide();
 renderUrlHistory();
@@ -341,14 +364,12 @@ elements.flowShapeCards.forEach((button) => {
 elements.addFlowNode.addEventListener("click", () => {
   addFlowNodeAtViewportCenter();
 });
-elements.toggleConnectMode.addEventListener("click", () => {
-  toggleFlowConnectMode();
-});
 elements.deleteFlowSelection.addEventListener("click", () => {
-  deleteSelectedFlowNode();
+  deleteSelectedFlowSelection();
 });
 elements.closeFlowDrawer.addEventListener("click", () => {
   flowBuilder.selectedNodeId = null;
+  flowBuilder.selectedEdgeId = null;
   renderFlowBuilder();
 });
 elements.clearFlowChart.addEventListener("click", () => {
@@ -368,8 +389,20 @@ elements.applyFlowColor.addEventListener("click", () => {
 elements.flowNodeLabelInput.addEventListener("input", () => {
   updateSelectedFlowNodeLabel(elements.flowNodeLabelInput.value);
 });
+elements.flowEdgeLabelInput.addEventListener("input", () => {
+  updateSelectedFlowEdgeLabel(elements.flowEdgeLabelInput.value);
+});
 elements.flowNodeTypeSelect.addEventListener("change", () => {
   updateSelectedFlowNodeType(elements.flowNodeTypeSelect.value);
+});
+elements.flowNodeFontSizeInput.addEventListener("input", () => {
+  updateSelectedFlowNodeFontSize(elements.flowNodeFontSizeInput.value);
+});
+elements.flowNodeWidthInput.addEventListener("input", () => {
+  updateSelectedFlowNodeSize(elements.flowNodeWidthInput.value, null);
+});
+elements.flowNodeHeightInput.addEventListener("input", () => {
+  updateSelectedFlowNodeSize(null, elements.flowNodeHeightInput.value);
 });
 elements.zoomOutFlow.addEventListener("click", () => {
   setFlowZoom(flowBuilder.zoom - 0.1);
@@ -444,7 +477,10 @@ elements.runQa.addEventListener("click", async () => {
   resetProgress(scenarioTotal);
   startProgressTicker();
   latestReportPath = null;
+  latestRunResult = null;
   elements.openReport.classList.add("hidden");
+  elements.exportFailures.classList.add("hidden");
+  elements.failureExportField.classList.add("hidden");
 
   try {
     saveBaseUrlHistory(elements.qaBaseUrl.value);
@@ -464,8 +500,10 @@ elements.runQa.addEventListener("click", async () => {
       failed: result.summary.scenarioFailed ?? result.summary.failed,
     });
     renderResults(result.results);
+    latestRunResult = result;
     latestReportPath = result.reports.htmlPath;
     elements.openReport.classList.remove("hidden");
+    syncFailureExportControls(result);
     refreshHistory();
   } catch (error) {
     const cancelled = error.message.includes("취소");
@@ -480,6 +518,8 @@ elements.runQa.addEventListener("click", async () => {
         durationMs: 0,
       },
     ]);
+    latestRunResult = null;
+    syncFailureExportControls(null);
   } finally {
     stopProgressTicker();
     setRunning(false);
@@ -499,7 +539,29 @@ elements.openReport.addEventListener("click", async () => {
   if (latestReportPath) await window.autoqa.openReport(latestReportPath);
 });
 
+elements.exportFailures.addEventListener("click", async () => {
+  if (!latestRunResult) return;
+  elements.exportFailures.disabled = true;
+  try {
+    const exported = await window.autoqa.exportFailures({
+      format: elements.failureExportFormat.value,
+      summary: latestRunResult.summary,
+      results: latestRunResult.results,
+    });
+    if (exported?.filePath) {
+      elements.statusText.textContent = `실패 파일 저장 완료 (${exported.count}건)`;
+    }
+  } catch (error) {
+    elements.statusText.textContent = error.message || "실패 파일 저장 실패";
+  } finally {
+    elements.exportFailures.disabled = false;
+  }
+});
+
 function setPage(page) {
+  if (page === "flow" && !isFlowChartEnabled) {
+    page = "scenario";
+  }
   currentPage = page;
   const pages = {
     home: elements.homePage,
@@ -523,6 +585,7 @@ function initializeSeasonTheme() {
 }
 
 function initializeFlowBuilder() {
+  if (!isFlowChartEnabled) return;
   renderFlowGuide();
   selectFlowColor(flowBuilder.selectedColor);
   setFlowTool(elements.flowShapeType.value || "process");
@@ -531,7 +594,6 @@ function initializeFlowBuilder() {
   elements.flowNodeLayer.addEventListener("dblclick", handleFlowNodeDoubleClick);
   elements.flowCanvasViewport.addEventListener("pointerdown", handleFlowCanvasPointerDown);
   elements.flowEdgeLayer.addEventListener("click", handleFlowEdgeClick);
-  elements.flowEdgeLayer.addEventListener("dblclick", handleFlowEdgeDoubleClick);
   window.addEventListener("pointermove", handleFlowPointerMove);
   window.addEventListener("pointerup", stopFlowDrag);
 }
@@ -560,24 +622,18 @@ function renderFlowGuide() {
   elements.flowGuideDescription.textContent = guide.description;
 }
 
-function toggleFlowConnectMode(forceValue) {
-  flowBuilder.connectMode = typeof forceValue === "boolean"
-    ? forceValue
-    : !flowBuilder.connectMode;
-  if (!flowBuilder.connectMode) flowBuilder.connectSource = null;
-  elements.toggleConnectMode.classList.toggle("active", flowBuilder.connectMode);
-  updateFlowStatus();
-  renderFlowBuilder();
+function isFlowConnecting() {
+  return Boolean(flowBuilder.connectSource);
 }
 
 function resetFlowBuilder() {
   flowBuilder.nodes = [];
   flowBuilder.edges = [];
   flowBuilder.selectedNodeId = null;
+  flowBuilder.selectedEdgeId = null;
   flowBuilder.connectSource = null;
   flowBuilder.nextNodeId = 1;
   flowBuilder.nextEdgeId = 1;
-  toggleFlowConnectMode(false);
   renderFlowBuilder();
 }
 
@@ -586,12 +642,13 @@ function createFlowNode(type, x, y, label = "") {
   return {
     id: `flow-node-${flowBuilder.nextNodeId++}`,
     type,
-    x,
-    y,
+    x: snapFlow(x),
+    y: snapFlow(y),
     width: template.width,
     height: template.height,
     label: label || template.label,
     fill: template.defaultColor,
+    fontSize: getDefaultFlowFontSize(type),
   };
 }
 
@@ -626,6 +683,35 @@ function snapFlow(value) {
   return Math.round(value / flowBuilder.gridSize) * flowBuilder.gridSize;
 }
 
+function alignFlowNodeToNearbyAxes(node, nextX, nextY) {
+  const threshold = flowBuilder.gridSize / 2;
+  const proposedCenterX = nextX + node.width / 2;
+  const proposedCenterY = nextY + node.height / 2;
+  let alignedX = nextX;
+  let alignedY = nextY;
+  let bestDeltaX = threshold + 1;
+  let bestDeltaY = threshold + 1;
+
+  for (const otherNode of flowBuilder.nodes) {
+    if (otherNode.id === node.id) continue;
+    const otherCenterX = otherNode.x + otherNode.width / 2;
+    const otherCenterY = otherNode.y + otherNode.height / 2;
+    const deltaX = Math.abs(proposedCenterX - otherCenterX);
+    const deltaY = Math.abs(proposedCenterY - otherCenterY);
+
+    if (deltaX <= threshold && deltaX < bestDeltaX) {
+      alignedX = snapFlow(otherCenterX - node.width / 2);
+      bestDeltaX = deltaX;
+    }
+    if (deltaY <= threshold && deltaY < bestDeltaY) {
+      alignedY = snapFlow(otherCenterY - node.height / 2);
+      bestDeltaY = deltaY;
+    }
+  }
+
+  return { x: alignedX, y: alignedY };
+}
+
 function renderFlowBuilder() {
   elements.flowCanvas.style.width = `${flowBuilder.width}px`;
   elements.flowCanvas.style.height = `${flowBuilder.height}px`;
@@ -640,26 +726,34 @@ function renderFlowBuilder() {
 function renderFlowNodes() {
   elements.flowNodeLayer.innerHTML = flowBuilder.nodes
     .map((node) => {
-      const selectedClass = node.id === flowBuilder.selectedNodeId ? " selected" : "";
+      const isSelected = node.id === flowBuilder.selectedNodeId;
+      const selectedClass = isSelected ? " selected" : "";
       const connectClass = flowBuilder.connectSource?.nodeId === node.id ? " connect-source" : "";
+      const connectTargetsClass = isFlowConnecting() ? " connect-targets" : "";
+      const resizeHandle = node.id === flowBuilder.selectedNodeId
+        ? `<button class="flow-node-resize-handle" type="button" data-node-id="${node.id}" data-resize-handle="true" aria-label="도형 크기 조정"></button>`
+        : "";
       const nodeLabel = escapeHtml(node.label);
       const ports = renderFlowPorts(node);
       if (node.type === "decision") {
         return `
-          <div class="flow-node flow-node-${node.type}${selectedClass}${connectClass}" data-node-id="${node.id}" style="left:${node.x}px;top:${node.y}px;width:${node.width}px;height:${node.height}px;--node-fill:${escapeHtml(node.fill)};--node-fill-rgb:${hexToRgb(node.fill)};">
+          <div class="flow-node flow-node-${node.type}${selectedClass}${connectClass}${connectTargetsClass}" data-node-id="${node.id}" style="left:${node.x}px;top:${node.y}px;width:${node.width}px;height:${node.height}px;--node-fill:${escapeHtml(node.fill)};--node-fill-rgb:${hexToRgb(node.fill)};--node-font-size:${node.fontSize || getDefaultFlowFontSize(node.type)}px;">
             <button class="flow-node-body" type="button" data-node-id="${node.id}">
-              <span class="flow-node-diamond"><span>${nodeLabel}</span></span>
+              <span class="flow-node-diamond-shape" aria-hidden="true"></span>
+              <span class="flow-node-diamond-label">${nodeLabel}</span>
             </button>
             ${ports}
+            ${resizeHandle}
           </div>
         `;
       }
       return `
-        <div class="flow-node flow-node-${node.type}${selectedClass}${connectClass}" data-node-id="${node.id}" style="left:${node.x}px;top:${node.y}px;width:${node.width}px;height:${node.height}px;--node-fill:${escapeHtml(node.fill)};--node-fill-rgb:${hexToRgb(node.fill)};">
+        <div class="flow-node flow-node-${node.type}${selectedClass}${connectClass}${connectTargetsClass}" data-node-id="${node.id}" style="left:${node.x}px;top:${node.y}px;width:${node.width}px;height:${node.height}px;--node-fill:${escapeHtml(node.fill)};--node-fill-rgb:${hexToRgb(node.fill)};--node-font-size:${node.fontSize || getDefaultFlowFontSize(node.type)}px;">
           <button class="flow-node-body" type="button" data-node-id="${node.id}">
             <span>${nodeLabel}</span>
           </button>
           ${ports}
+          ${resizeHandle}
         </div>
       `;
     })
@@ -696,8 +790,9 @@ function renderFlowEdges() {
         </g>
       `
       : "";
+    const selectedClass = edge.id === flowBuilder.selectedEdgeId ? " selected" : "";
     edgeMarkup.push(`
-      <g class="flow-edge-group" data-edge-id="${edge.id}">
+      <g class="flow-edge-group${selectedClass}" data-edge-id="${edge.id}">
         <path d="${pathData.path}" class="flow-edge-path-underlay"></path>
         <path d="${pathData.path}" class="flow-edge-path" marker-end="url(#flowArrow)"></path>
         ${labelMarkup}
@@ -742,47 +837,94 @@ function getFlowNode(id) {
 
 function updateFlowStatus() {
   const selectedNode = getFlowNode(flowBuilder.selectedNodeId);
+  const selectedEdge = getFlowEdge(flowBuilder.selectedEdgeId);
   elements.flowSelectionStatus.textContent = selectedNode
     ? `${getFlowShapeLabel(selectedNode.type)} 선택됨`
-    : "도형을 선택하고 추가하세요.";
-  elements.flowConnectStatus.textContent = flowBuilder.connectMode
-    ? flowBuilder.connectSource
-      ? `${getFlowShapeLabel(getFlowNode(flowBuilder.connectSource.nodeId)?.type)}의 ${translatePort(flowBuilder.connectSource.port)} 포트에서 연결 중`
-      : "연결 시작 포트를 선택하세요."
-    : "연결 모드 꺼짐";
+    : selectedEdge
+      ? "연결선 선택됨"
+      : "도형을 선택하고 추가하세요.";
+  elements.flowConnectStatus.textContent = flowBuilder.connectSource
+    ? `${getFlowShapeLabel(getFlowNode(flowBuilder.connectSource.nodeId)?.type)}의 ${translatePort(flowBuilder.connectSource.port)} 포트에서 연결 중`
+    : selectedEdge
+      ? "속성 패널에서 선 텍스트를 수정하거나 삭제할 수 있습니다."
+      : selectedNode
+      ? "도형 포트를 클릭하면 연결을 시작합니다."
+      : "도형을 선택하면 연결 지점이 표시됩니다.";
 }
 
 function syncFlowPropertyPanel() {
   const node = getFlowNode(flowBuilder.selectedNodeId);
-  const isDisabled = !node;
-  elements.flowPropertiesPanel.classList.toggle("open", !isDisabled);
-  elements.flowNodeLabelInput.disabled = isDisabled;
-  elements.flowNodeTypeSelect.disabled = isDisabled;
-  elements.flowCustomColor.disabled = isDisabled;
-  elements.applyFlowColor.disabled = isDisabled;
-  elements.deleteFlowSelection.disabled = isDisabled;
+  const edge = getFlowEdge(flowBuilder.selectedEdgeId);
+  const hasSelection = Boolean(node || edge);
+  const isNodeSelected = Boolean(node);
+  const isEdgeSelected = Boolean(edge);
+  elements.flowPropertiesPanel.classList.toggle("open", hasSelection);
+  elements.flowNodeProperties.classList.toggle("hidden", !isNodeSelected);
+  elements.flowEdgeProperties.classList.toggle("hidden", !isEdgeSelected);
+  elements.flowNodeLabelInput.disabled = !isNodeSelected;
+  elements.flowNodeTypeSelect.disabled = !isNodeSelected;
+  elements.flowNodeFontSizeInput.disabled = !isNodeSelected;
+  elements.flowNodeWidthInput.disabled = !isNodeSelected;
+  elements.flowNodeHeightInput.disabled = !isNodeSelected;
+  elements.flowCustomColor.disabled = !isNodeSelected;
+  elements.applyFlowColor.disabled = !isNodeSelected;
+  elements.flowEdgeLabelInput.disabled = !isEdgeSelected;
+  elements.deleteFlowSelection.disabled = !hasSelection;
   elements.flowColorSwatches.forEach((button) => {
-    button.disabled = isDisabled;
+    button.disabled = !isNodeSelected;
   });
-  if (!node) {
+  if (!hasSelection) {
     elements.flowNodeLabelInput.value = "";
+    elements.flowEdgeLabelInput.value = "";
     elements.flowNodeTypeSelect.value = flowBuilder.tool;
+    elements.flowNodeFontSizeInput.value = String(getDefaultFlowFontSize(flowBuilder.tool));
+    elements.flowNodeWidthInput.value = String(flowShapeTemplates[flowBuilder.tool]?.width || flowGridUnit * 10);
+    elements.flowNodeHeightInput.value = String(flowShapeTemplates[flowBuilder.tool]?.height || flowGridUnit * 5);
+    return;
+  }
+  if (isEdgeSelected) {
+    elements.flowEdgeLabelInput.value = edge.label || "";
     return;
   }
   elements.flowNodeLabelInput.value = node.label;
   elements.flowNodeTypeSelect.value = node.type;
+  elements.flowNodeFontSizeInput.value = String(node.fontSize || getDefaultFlowFontSize(node.type));
+  elements.flowNodeWidthInput.value = String(node.width);
+  elements.flowNodeHeightInput.value = String(node.height);
   syncFlowColorControls(node.fill);
 }
 
 function handleFlowCanvasPointerDown(event) {
   if (event.target !== elements.flowCanvas && event.target !== elements.flowNodeLayer) return;
   flowBuilder.selectedNodeId = null;
-  if (!flowBuilder.connectMode) {
-    renderFlowBuilder();
-  }
+  flowBuilder.selectedEdgeId = null;
+  flowBuilder.connectSource = null;
+  renderFlowBuilder();
 }
 
 function handleFlowNodePointerDown(event) {
+  const resizeHandle = event.target.closest("[data-resize-handle='true']");
+  if (resizeHandle) {
+    event.preventDefault();
+    const node = getFlowNode(resizeHandle.dataset.nodeId);
+    if (!node) return;
+    flowBuilder.selectedNodeId = node.id;
+    flowBuilder.selectedEdgeId = null;
+    syncFlowColorControls(node.fill);
+    flowDragState = {
+      kind: "resize",
+      nodeId: node.id,
+      pointerId: event.pointerId,
+      originClientX: event.clientX,
+      originClientY: event.clientY,
+      originWidth: node.width,
+      originHeight: node.height,
+    };
+    resizeHandle.setPointerCapture?.(event.pointerId);
+    renderFlowBuilder();
+    return;
+  }
+
   const portButton = event.target.closest("[data-port]");
   if (portButton) {
     event.preventDefault();
@@ -796,13 +938,15 @@ function handleFlowNodePointerDown(event) {
   const node = getFlowNode(nodeButton.dataset.nodeId);
   if (!node) return;
   flowBuilder.selectedNodeId = node.id;
+  flowBuilder.selectedEdgeId = null;
   syncFlowColorControls(node.fill);
 
-  const rect = elements.flowCanvas.getBoundingClientRect();
   flowDragState = {
+    kind: "move",
     nodeId: node.id,
-    offsetX: (event.clientX - rect.left) / flowBuilder.zoom - node.x + elements.flowCanvasViewport.scrollLeft / flowBuilder.zoom,
-    offsetY: (event.clientY - rect.top) / flowBuilder.zoom - node.y + elements.flowCanvasViewport.scrollTop / flowBuilder.zoom,
+    pointerId: event.pointerId,
+    offsetX: getFlowCanvasPointerPosition(event).x - node.x,
+    offsetY: getFlowCanvasPointerPosition(event).y - node.y,
   };
   nodeButton.setPointerCapture?.(event.pointerId);
   renderFlowBuilder();
@@ -812,13 +956,23 @@ function handleFlowPointerMove(event) {
   if (!flowDragState) return;
   const node = getFlowNode(flowDragState.nodeId);
   if (!node) return;
-  const rect = elements.flowCanvas.getBoundingClientRect();
-  const nextX = snapFlow((event.clientX - rect.left) / flowBuilder.zoom + elements.flowCanvasViewport.scrollLeft / flowBuilder.zoom - flowDragState.offsetX);
-  const nextY = snapFlow((event.clientY - rect.top) / flowBuilder.zoom + elements.flowCanvasViewport.scrollTop / flowBuilder.zoom - flowDragState.offsetY);
-  node.x = clampFlow(nextX, 24, flowBuilder.width - node.width - 24);
-  node.y = clampFlow(nextY, 24, flowBuilder.height - node.height - 24);
+  if (flowDragState.kind === "resize") {
+    const deltaX = (event.clientX - flowDragState.originClientX) / flowBuilder.zoom;
+    const deltaY = (event.clientY - flowDragState.originClientY) / flowBuilder.zoom;
+    const nextWidth = snapFlow(flowDragState.originWidth + deltaX);
+    const nextHeight = snapFlow(flowDragState.originHeight + deltaY);
+    applyFlowNodeSize(node, nextWidth, nextHeight);
+  } else {
+    const pointer = getFlowCanvasPointerPosition(event);
+    const nextX = snapFlow(pointer.x - flowDragState.offsetX);
+    const nextY = snapFlow(pointer.y - flowDragState.offsetY);
+    const alignedPosition = alignFlowNodeToNearbyAxes(node, nextX, nextY);
+    node.x = clampFlow(alignedPosition.x, 24, flowBuilder.width - node.width - 24);
+    node.y = clampFlow(alignedPosition.y, 24, flowBuilder.height - node.height - 24);
+  }
   renderFlowEdges();
   renderFlowNodes();
+  syncFlowPropertyPanel();
 }
 
 function stopFlowDrag() {
@@ -831,12 +985,34 @@ function clampFlow(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function getFlowCanvasPointerPosition(event) {
+  const rect = elements.flowCanvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - rect.left) / flowBuilder.zoom + elements.flowCanvasViewport.scrollLeft / flowBuilder.zoom,
+    y: (event.clientY - rect.top) / flowBuilder.zoom + elements.flowCanvasViewport.scrollTop / flowBuilder.zoom,
+  };
+}
+
+function applyFlowNodeSize(node, width, height) {
+  const minWidth = getFlowNodeMinWidth(node.type);
+  const minHeight = getFlowNodeMinHeight(node.type);
+  const nextWidth = clampFlow(
+    snapFlow(Number(width) || node.width),
+    minWidth,
+    flowBuilder.width - node.x - 24,
+  );
+  const nextHeight = clampFlow(
+    snapFlow(Number(height) || node.height),
+    minHeight,
+    flowBuilder.height - node.y - 24,
+  );
+  node.width = nextWidth;
+  node.height = nextHeight;
+}
+
 function handleFlowPortSelection(nodeId, port) {
-  if (!flowBuilder.connectMode) {
-    flowBuilder.selectedNodeId = nodeId;
-    renderFlowBuilder();
-    return;
-  }
+  flowBuilder.selectedNodeId = nodeId;
+  flowBuilder.selectedEdgeId = null;
   if (!flowBuilder.connectSource) {
     flowBuilder.connectSource = { nodeId, port };
     updateFlowStatus();
@@ -872,32 +1048,26 @@ function handleFlowNodeDoubleClick(event) {
   if (nextLabel == null) return;
   node.label = nextLabel.trim() || node.label;
   flowBuilder.selectedNodeId = node.id;
+  flowBuilder.selectedEdgeId = null;
   renderFlowBuilder();
 }
 
-function handleFlowEdgeDoubleClick(event) {
+function handleFlowEdgeClick(event) {
   const edgeGroup = event.target.closest("[data-edge-id]");
   if (!edgeGroup) return;
-  const edge = flowBuilder.edges.find((item) => item.id === edgeGroup.dataset.edgeId);
-  if (!edge) return;
-  const nextLabel = window.prompt("선 중앙 텍스트를 입력하세요.", edge.label || "");
-  if (nextLabel == null) return;
-  edge.label = nextLabel.trim();
-  renderFlowEdges();
+  flowBuilder.selectedEdgeId = edgeGroup.dataset.edgeId;
+  flowBuilder.selectedNodeId = null;
+  flowBuilder.connectSource = null;
+  renderFlowBuilder();
 }
 
-function handleFlowEdgeClick(event) {
-  const labelGroup = event.target.closest("[data-edge-label='true']");
-  if (!labelGroup) return;
-  const edge = flowBuilder.edges.find((item) => item.id === labelGroup.dataset.edgeId);
-  if (!edge) return;
-  const nextLabel = window.prompt("선 중앙 텍스트를 입력하세요.", edge.label || "");
-  if (nextLabel == null) return;
-  edge.label = nextLabel.trim();
-  renderFlowEdges();
-}
-
-function deleteSelectedFlowNode() {
+function deleteSelectedFlowSelection() {
+  if (flowBuilder.selectedEdgeId) {
+    flowBuilder.edges = flowBuilder.edges.filter((edge) => edge.id !== flowBuilder.selectedEdgeId);
+    flowBuilder.selectedEdgeId = null;
+    renderFlowBuilder();
+    return;
+  }
   if (!flowBuilder.selectedNodeId) return;
   const nodeId = flowBuilder.selectedNodeId;
   flowBuilder.nodes = flowBuilder.nodes.filter((node) => node.id !== nodeId);
@@ -947,14 +1117,29 @@ function updateSelectedFlowNodeLabel(value) {
   renderFlowNodes();
 }
 
+function updateSelectedFlowEdgeLabel(value) {
+  const edge = getFlowEdge(flowBuilder.selectedEdgeId);
+  if (!edge) return;
+  edge.label = String(value || "");
+  renderFlowEdges();
+}
+
 function updateSelectedFlowNodeType(type) {
   const node = getFlowNode(flowBuilder.selectedNodeId);
   const template = flowShapeTemplates[type];
   if (!node || !template) return;
   const previousType = node.type;
+  const previousDefaultFontSize = getDefaultFlowFontSize(previousType);
+  const centerX = node.x + node.width / 2;
+  const centerY = node.y + node.height / 2;
   node.type = type;
-  node.width = template.width;
-  node.height = template.height;
+  node.width = Math.max(node.width, getFlowNodeMinWidth(type));
+  node.height = Math.max(node.height, getFlowNodeMinHeight(type));
+  node.x = clampFlow(snapFlow(centerX - node.width / 2), 24, flowBuilder.width - node.width - 24);
+  node.y = clampFlow(snapFlow(centerY - node.height / 2), 24, flowBuilder.height - node.height - 24);
+  if (!node.fontSize || node.fontSize === previousDefaultFontSize) {
+    node.fontSize = getDefaultFlowFontSize(type);
+  }
   if (node.label === flowShapeTemplates[previousType]?.label || !node.label.trim()) {
     node.label = template.label;
   }
@@ -962,6 +1147,26 @@ function updateSelectedFlowNodeType(type) {
     node.fill = template.defaultColor;
   }
   selectFlowColor(node.fill);
+  renderFlowBuilder();
+}
+
+function updateSelectedFlowNodeFontSize(value) {
+  const node = getFlowNode(flowBuilder.selectedNodeId);
+  if (!node) return;
+  const nextFontSize = clampFlow(Number.parseInt(value, 10) || getDefaultFlowFontSize(node.type), 10, 28);
+  node.fontSize = nextFontSize;
+  elements.flowNodeFontSizeInput.value = String(nextFontSize);
+  renderFlowNodes();
+}
+
+function updateSelectedFlowNodeSize(widthValue, heightValue) {
+  const node = getFlowNode(flowBuilder.selectedNodeId);
+  if (!node) return;
+  applyFlowNodeSize(
+    node,
+    widthValue == null || widthValue === "" ? node.width : widthValue,
+    heightValue == null || heightValue === "" ? node.height : heightValue,
+  );
   renderFlowBuilder();
 }
 
@@ -979,6 +1184,10 @@ function getFlowShapeLabel(type) {
     preparation: "준비 도형",
   };
   return labels[type] || "도형";
+}
+
+function getFlowEdge(id) {
+  return flowBuilder.edges.find((edge) => edge.id === id) || null;
 }
 
 function translatePort(port) {
@@ -1976,10 +2185,22 @@ function renderResults(results) {
       <strong>${escapeHtml(result.title)}</strong>
       <p>${escapeHtml(result.environmentName || "기본")} · ${escapeHtml(result.featurePath || "공통")} · ${escapeHtml(formatSuiteLabel(result.suite))}</p>
       <p>${Number(result.durationMs || 0)}ms</p>
+      ${result.failureReason ? `<p><strong>실패 사유</strong> ${escapeHtml(result.failureReason)}</p>` : ""}
+      ${result.detectionPoint ? `<p><strong>발견 지점</strong> ${escapeHtml(result.detectionPoint)}</p>` : ""}
       ${result.error ? `<p>${escapeHtml(result.error)}</p>` : ""}
     `;
     elements.resultList.appendChild(item);
   }
+}
+
+function syncFailureExportControls(result) {
+  const failedCount = Array.isArray(result?.results)
+    ? result.results.filter((item) => item?.status === "failed").length
+    : 0;
+  const hasFailures = failedCount > 0;
+  elements.exportFailures.classList.toggle("hidden", !hasFailures);
+  elements.failureExportField.classList.toggle("hidden", !hasFailures);
+  elements.exportFailures.disabled = !hasFailures;
 }
 
 function escapeHtml(value) {
