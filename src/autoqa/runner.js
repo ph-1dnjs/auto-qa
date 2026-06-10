@@ -1,7 +1,14 @@
 const path = require("node:path");
-const { chromium } = require("playwright");
+const { chromium, firefox, webkit } = require("playwright");
+const { getChromiumFallbackOptions, resolveBrowserOption } = require("./browser-options");
 const { filterScenarios, prepareScenarios } = require("./planner");
 const { writeReports } = require("./report");
+
+const playwrightBrowsers = {
+  chromium,
+  firefox,
+  webkit
+};
 
 function normalizeUrl(url) {
   const trimmed = String(url || "").trim();
@@ -16,6 +23,17 @@ function resolveTarget(baseUrl, target) {
   if (raw.startsWith("/")) return new URL(raw, baseUrl).toString();
   if (raw === "홈" || raw.toLowerCase() === "home") return baseUrl;
   return new URL(raw.replace(/^\s+/, ""), baseUrl).toString();
+}
+
+function collectRunVideos(results) {
+  return results
+    .filter((result) => result?.videoPath)
+    .map((result, index) => ({
+      index: index + 1,
+      title: result.title || `video-${index + 1}`,
+      status: result.status || "completed",
+      filePath: result.videoPath,
+    }));
 }
 
 async function runAutoQa(options) {
@@ -95,9 +113,12 @@ async function runAutoQa(options) {
   }
 
   const durationMs = Date.now() - started;
+  const selectedBrowser = resolveBrowserOption(options.browserId);
   const summary = {
     runId: options.runId || `run-${Date.now()}`,
     baseUrl: environments[0]?.baseUrl || "",
+    browserId: selectedBrowser.id,
+    browserLabel: selectedBrowser.label,
     startedAt,
     durationMs,
     total: results.length,
@@ -111,22 +132,37 @@ async function runAutoQa(options) {
   };
 
   const reports = await writeReports({ summary, results, artifactsDir: options.artifactsDir });
+  const videos = collectRunVideos(results);
   completedUnits = totalUnits;
   emitProgress("completed", "QA 완료");
-  return { summary, results, reports };
+  return {
+    summary,
+    results,
+    reports: {
+      ...reports,
+      videoDir: path.join(options.artifactsDir, "videos"),
+      videoCount: videos.length,
+      videos,
+    },
+  };
 }
 
 async function runEnvironmentQa(options) {
   const started = Date.now();
-  const browser = await launchChromiumForQa({
-    headless: true,
+  const selectedBrowser = resolveBrowserOption(options.browserId);
+  const browser = await launchBrowserForQa(selectedBrowser, {
+    headless: options.headless !== false,
   });
   if (options.cancellationToken) options.cancellationToken.browser = browser;
 
   const context = await browser.newContext({
     baseURL: options.baseUrl,
     viewport: { width: 1920, height: 1400 },
-    ignoreHTTPSErrors: Boolean(options.ignoreHTTPSErrors)
+    ignoreHTTPSErrors: Boolean(options.ignoreHTTPSErrors),
+    recordVideo: {
+      dir: path.join(options.artifactsDir, "videos"),
+      size: { width: 1440, height: 960 },
+    },
   });
 
   const results = [];
@@ -193,6 +229,8 @@ async function runEnvironmentQa(options) {
       id: options.environment.id,
       name: options.environment.name,
       baseUrl: options.baseUrl,
+      browserId: selectedBrowser.id,
+      browserLabel: selectedBrowser.label,
       total: results.length,
       passed: results.filter((item) => item.status === "passed").length,
       failed: results.filter((item) => item.status === "failed").length,
@@ -254,27 +292,34 @@ async function capturePagePreview(page) {
   }
 }
 
-async function launchChromiumForQa(launchOptions) {
-  try {
-    return await chromium.launch(launchOptions);
-  } catch (error) {
-    if (!shouldFallbackToSystemChannel(error)) throw error;
+async function launchBrowserForQa(browserOption, launchOptions) {
+  const browserType = playwrightBrowsers[browserOption.browserName];
+  const resolvedLaunchOptions = browserOption.channel
+    ? { ...launchOptions, channel: browserOption.channel }
+    : { ...launchOptions };
 
-    const channels = getFallbackChannels();
+  try {
+    return await browserType.launch(resolvedLaunchOptions);
+  } catch (error) {
+    if (browserOption.id !== "chromium" || !shouldFallbackToSystemChannel(error)) {
+      throw decorateBrowserLaunchError(browserOption, error);
+    }
+
+    const channels = getChromiumFallbackOptions();
     const failures = [];
-    for (const channel of channels) {
+    for (const channelOption of channels) {
       try {
-        return await chromium.launch({
+        return await browserType.launch({
           ...launchOptions,
-          channel,
+          channel: channelOption.channel,
         });
       } catch (channelError) {
-        failures.push(`${channel}: ${channelError.message}`);
+        failures.push(`${channelOption.label}: ${channelError.message}`);
       }
     }
 
     const fallbackError = new Error([
-      "번들된 Playwright 브라우저를 찾지 못했고 시스템 브라우저 실행도 실패했습니다.",
+      `"${browserOption.label}" 실행에 실패했고 시스템 Chromium 계열 브라우저 폴백도 실패했습니다.`,
       ...failures,
     ].join(" "));
     fallbackError.cause = error;
@@ -282,21 +327,17 @@ async function launchChromiumForQa(launchOptions) {
   }
 }
 
+function decorateBrowserLaunchError(browserOption, error) {
+  const wrapped = new Error(`"${browserOption.label}" 실행에 실패했습니다. ${error.message}`);
+  wrapped.cause = error;
+  return wrapped;
+}
+
 function shouldFallbackToSystemChannel(error) {
   const message = String(error?.message || "");
   return /Executable doesn't exist/i.test(message)
     || /Please run the following command to download new browsers/i.test(message)
     || /chrome-headless-shell/i.test(message);
-}
-
-function getFallbackChannels() {
-  if (process.platform === "win32") {
-    return ["msedge", "chrome"];
-  }
-  if (process.platform === "darwin") {
-    return ["chrome", "msedge"];
-  }
-  return ["chrome", "msedge"];
 }
 
 function checkCancellation(cancellationToken) {
@@ -321,6 +362,9 @@ function formatStepPreview(step) {
   if (step.action === "select") return `${step.target} 선택`;
   if (step.action === "download") return `${step.target} 다운로드`;
   if (step.action === "expectText") return `${step.target} 텍스트 확인`;
+  if (step.action === "scrollToBottom") return "페이지 끝까지 스크롤";
+  if (step.action === "expectButtonDisabled") return `${step.target} 버튼 비활성화 확인`;
+  if (step.action === "expectButtonEnabled") return `${step.target} 버튼 활성화 확인`;
   if (step.action === "expectUrlContains") return `URL ${step.value} 포함 확인`;
   if (step.action === "wait") return `${Math.round((step.value || 0) / 1000)}초 대기`;
   return `${step.action || "단계"} 실행`;
@@ -329,11 +373,17 @@ function formatStepPreview(step) {
 function buildRunList(scenarioText, selection) {
   const parsed = prepareScenarios(scenarioText);
   const filtered = filterScenarios(parsed, selection);
-  if (filtered.length > 0) return filtered;
+  if (filtered.length > 0) {
+    validateScenarioExecutability(filtered);
+    return filtered;
+  }
   if (parsed.length > 0 && selection && Object.keys(selection).length > 0) {
     throw new Error("선택한 Feature 또는 Suite에 해당하는 시나리오가 없습니다.");
   }
-  if (parsed.length > 0) return parsed;
+  if (parsed.length > 0) {
+    validateScenarioExecutability(parsed);
+    return parsed;
+  }
 
   return [
     {
@@ -346,6 +396,53 @@ function buildRunList(scenarioText, selection) {
       steps: [{ action: "goto", target: "/" }]
     }
   ];
+}
+
+function validateScenarioExecutability(scenarios) {
+  const nonExecutable = scenarios.filter((scenario) => {
+    const steps = Array.isArray(scenario.steps) ? scenario.steps : [];
+    return steps.length > 0 && steps.every((step) => step?.action === "note");
+  });
+
+  if (nonExecutable.length) {
+    const titles = nonExecutable.slice(0, 3).map((scenario) => scenario.title).join(", ");
+    const extra = nonExecutable.length > 3 ? ` 외 ${nonExecutable.length - 3}건` : "";
+    throw new Error([
+      "불러온 시나리오에 실행 가능한 QA 단계가 없습니다.",
+      `대상: ${titles}${extra}`,
+      "현재 엔진은 '/login 페이지로 이동한다', \"이메일을 'a@b.com' 으로 입력한다\", '저장 버튼을 클릭한다', '텍스트가 보인다' 같은 형식만 자동 실행할 수 있습니다.",
+      "엑셀에서 가져온 원본 문장은 케이스 설명용이라 대부분 자동화 액션으로 해석되지 않습니다."
+    ].join(" "));
+  }
+
+  const actionless = scenarios.filter((scenario) => {
+    const steps = Array.isArray(scenario.steps) ? scenario.steps : [];
+    if (!steps.length) return false;
+    return !steps.some(isInteractiveStep);
+  });
+
+  if (!actionless.length) return;
+
+  const titles = actionless.slice(0, 3).map((scenario) => scenario.title).join(", ");
+  const extra = actionless.length > 3 ? ` 외 ${actionless.length - 3}건` : "";
+  throw new Error([
+    "불러온 시나리오에 화면을 실제로 진행할 액션 단계가 없습니다.",
+    `대상: ${titles}${extra}`,
+    "현재 실행기는 이동, 입력, 클릭, 선택, 스크롤, 다운로드, 대기 같은 액션이 있어야 다음 화면으로 진행할 수 있습니다.",
+    "텍스트 확인만 있는 시나리오는 렌더링된 첫 화면에서 멈춰 보일 수 있으므로, 엑셀 변환 규칙을 보강하거나 추출기에서 실제 플로우를 기록해야 합니다."
+  ].join(" "));
+}
+
+function isInteractiveStep(step) {
+  return [
+    "goto",
+    "fill",
+    "click",
+    "select",
+    "download",
+    "scrollToBottom",
+    "wait"
+  ].includes(step?.action);
 }
 
 function normalizeEnvironments(baseUrl, environments) {
@@ -378,6 +475,7 @@ async function runHealthCheck(context, baseUrl, artifactsDir, onPreview, environ
   const page = await context.newPage();
   const consoleErrors = [];
   const failedRequests = [];
+  let result = null;
 
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text());
@@ -406,7 +504,7 @@ async function runHealthCheck(context, baseUrl, artifactsDir, onPreview, environ
       ].filter(Boolean).join(", "));
     }
 
-    return {
+    result = {
       id: "health-check",
       title: "기본 URL 상태 점검",
       environmentId: environment?.id || "default",
@@ -414,7 +512,7 @@ async function runHealthCheck(context, baseUrl, artifactsDir, onPreview, environ
       featurePath: "공통",
       suite: "smoke",
       status: "passed",
-      durationMs: Date.now() - started
+      durationMs: Date.now() - started,
     };
   } catch (error) {
     await onPreview?.(page, "기본 URL 상태 점검 실패", { previewStatus: "failed" });
@@ -427,7 +525,7 @@ async function runHealthCheck(context, baseUrl, artifactsDir, onPreview, environ
       detectionPointLabel: "기본 URL 상태 점검",
       fallbackUrl: baseUrl
     });
-    return {
+    result = {
       id: "health-check",
       title: "기본 URL 상태 점검",
       environmentId: environment?.id || "default",
@@ -441,11 +539,13 @@ async function runHealthCheck(context, baseUrl, artifactsDir, onPreview, environ
       failureReason: failure.failureReason,
       detectionPoint: failure.detectionPoint,
       currentUrl: failure.currentUrl,
-      screenshot
+      screenshot,
     };
   } finally {
-    await page.close();
+    const videoPath = await closePageWithVideo(page);
+    if (result) result.videoPath = videoPath;
   }
+  return result;
 }
 
 async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview, environment) {
@@ -453,6 +553,7 @@ async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview, 
   const page = await context.newPage();
   let currentStep = null;
   let currentStepIndex = -1;
+  let result = null;
 
   try {
     await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
@@ -466,7 +567,7 @@ async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview, 
       await onPreview?.(page, `${scenario.title} · ${formatStepPreview(step)}`);
     }
 
-    return {
+    result = {
       id: scenario.id,
       title: scenario.title,
       priority: scenario.priority,
@@ -476,7 +577,7 @@ async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview, 
       environmentId: environment?.id || "default",
       environmentName: environment?.name || "기본",
       status: "passed",
-      durationMs: Date.now() - started
+      durationMs: Date.now() - started,
     };
   } catch (error) {
     await onPreview?.(page, `${scenario.title} 실패`, { previewStatus: "failed" });
@@ -493,7 +594,7 @@ async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview, 
         : `${scenario.title} / 시작 준비`,
       fallbackUrl: baseUrl
     });
-    return {
+    result = {
       id: scenario.id,
       title: scenario.title,
       priority: scenario.priority,
@@ -509,11 +610,13 @@ async function runScenario(context, baseUrl, scenario, artifactsDir, onPreview, 
       failureReason: failure.failureReason,
       detectionPoint: failure.detectionPoint,
       currentUrl: failure.currentUrl,
-      screenshot
+      screenshot,
     };
   } finally {
-    await page.close();
+    const videoPath = await closePageWithVideo(page);
+    if (result) result.videoPath = videoPath;
   }
+  return result;
 }
 
 async function executeStep(page, baseUrl, step, artifactsDir, scenarioId) {
@@ -535,6 +638,15 @@ async function executeStep(page, baseUrl, step, artifactsDir, scenarioId) {
       return;
     case "expectText":
       await expectTextWithScroll(page, step.target);
+      return;
+    case "scrollToBottom":
+      await scrollToBottom(page);
+      return;
+    case "expectButtonDisabled":
+      await expectButtonState(page, step.target, true);
+      return;
+    case "expectButtonEnabled":
+      await expectButtonState(page, step.target, false);
       return;
     case "expectUrlContains":
       if (!page.url().includes(step.value)) {
@@ -580,6 +692,32 @@ async function expectTextWithScroll(page, text) {
   }
 
   await target.waitFor({ timeout: 12000 });
+}
+
+async function scrollToBottom(page) {
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)).catch(() => {});
+  await page.waitForTimeout(300);
+  const scrolledToBottom = await page.evaluate(() => {
+    return window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 8;
+  }).catch(() => false);
+  if (!scrolledToBottom) {
+    throw new Error("페이지를 끝까지 스크롤하지 못했습니다.");
+  }
+}
+
+async function expectButtonState(page, text, expectedDisabled) {
+  const target = await findClickableTarget(page, text);
+  if (!target) {
+    throw new Error(`'${text}' 버튼을 찾지 못했습니다.`);
+  }
+
+  const disabled = await isDisabled(target);
+  if (expectedDisabled && !disabled) {
+    throw new Error(`'${text}' 버튼이 비활성화 상태가 아닙니다.`);
+  }
+  if (!expectedDisabled && disabled) {
+    throw new Error(`'${text}' 버튼이 활성화 상태가 아닙니다.`);
+  }
 }
 
 async function selectByLabelOrText(page, label, value) {
@@ -757,6 +895,16 @@ async function isFillable(locator) {
 }
 
 async function clickByText(page, text) {
+  const target = await findClickableTarget(page, text);
+  if (target) {
+    await clickEnabledTarget(target, text);
+    return;
+  }
+
+  throw new Error(`클릭 대상을 찾지 못했습니다: ${text}`);
+}
+
+async function findClickableTarget(page, text) {
   const candidates = [
     page.getByRole("button", { name: text, exact: false }),
     page.getByRole("link", { name: text, exact: false }),
@@ -766,12 +914,11 @@ async function clickByText(page, text) {
   for (const locator of candidates) {
     const target = locator.first();
     if (await target.isVisible().catch(() => false)) {
-      await clickEnabledTarget(target, text);
-      return;
+      return target;
     }
   }
 
-  throw new Error(`클릭 대상을 찾지 못했습니다: ${text}`);
+  return null;
 }
 
 async function clickEnabledTarget(locator, text) {
@@ -889,8 +1036,24 @@ function safePageUrl(page) {
   }
 }
 
+async function closePageWithVideo(page) {
+  const video = typeof page?.video === "function" ? page.video() : null;
+  await page.close().catch(() => {});
+  if (!video || typeof video.path !== "function") return null;
+  try {
+    return await video.path();
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
   runAutoQa,
+  validateScenarioExecutability,
   normalizeUrl,
-  resolveTarget
+  resolveTarget,
+  __test__: {
+    collectRunVideos,
+    downloadByClick,
+  }
 };

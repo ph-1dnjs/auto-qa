@@ -301,8 +301,16 @@ function openEditor(clientX, clientY, actionType, label) {
 
 function updateValueField() {
   const actionType = document.querySelector("#autoqa-action-type")?.value;
+  const labelInput = document.querySelector("#autoqa-action-label");
   const wrap = document.querySelector("#autoqa-action-value-wrap");
   if (!wrap) return;
+
+  if (labelInput) {
+    const disableLabel = actionType === "result";
+    if (disableLabel) labelInput.value = "";
+    labelInput.disabled = disableLabel;
+  }
+
   wrap.style.display = ["fill", "select", "result"].includes(actionType) ? "grid" : "none";
 }
 
@@ -316,7 +324,11 @@ function saveDraft() {
   if (!state.draft) return;
 
   const actionType = document.querySelector("#autoqa-action-type").value;
-  const label = cleanText(document.querySelector("#autoqa-action-label").value || state.draft.label || "대상");
+  const labelSource =
+    actionType === "result"
+      ? document.querySelector("#autoqa-action-label").value
+      : document.querySelector("#autoqa-action-label").value || state.draft.label || "대상";
+  const label = cleanText(labelSource);
   const value = document.querySelector("#autoqa-action-value").value;
   const step = buildStep(actionType, label, value);
   if (!step) return;

@@ -39,7 +39,8 @@
   "license": "UNLICENSED",
   "dependencies": {
     "electron-updater": "^6.8.3",
-    "playwright": "^1.51.1"
+    "playwright": "^1.51.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@electron/notarize": "^2.5.0",

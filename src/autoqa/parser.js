@@ -107,7 +107,17 @@ function parseNaturalLanguageStep(line) {
     return { action: "goto", target: match[1].trim() };
   }
 
+  match = step.match(/^(.+?)\s*(?:페이지|화면)(?:로|에)?\s*(?:진입|접속)한다$/);
+  if (match) {
+    return { action: "goto", target: match[1].trim() };
+  }
+
   match = step.match(/^(.+?)\s*(?:을|를)\s*['"](.+?)['"]\s*(?:으로|로)\s*입력한다$/);
+  if (match) {
+    return { action: "fill", target: match[1].trim(), value: match[2] };
+  }
+
+  match = step.match(/^(.+?)\s*(?:에|을|를)\s*['"](.+?)['"]\s*입력한다$/);
   if (match) {
     return { action: "fill", target: match[1].trim(), value: match[2] };
   }
@@ -129,12 +139,42 @@ function parseNaturalLanguageStep(line) {
 
   match = step.match(/^(.+?)\s*(?:버튼을\s*)?클릭한다$/);
   if (match) {
-    return { action: "click", target: match[1].trim().replace(/\s*버튼$/, "") };
+    return { action: "click", target: match[1].trim().replace(/\s*(?:버튼|탭|메뉴|링크)(?:을)?$/, "") };
+  }
+
+  match = step.match(/^(.+?)\s*(?:버튼|탭|메뉴|링크)(?:을\s*)?클릭한다$/);
+  if (match) {
+    return { action: "click", target: match[1].trim() };
+  }
+
+  match = step.match(/^(.+?)\s*(?:버튼|탭|메뉴|링크)(?:을\s*)?선택한다$/);
+  if (match) {
+    return { action: "click", target: match[1].trim() };
+  }
+
+  match = step.match(/^페이지를\s*끝까지\s*스크롤한다$/);
+  if (match) {
+    return { action: "scrollToBottom" };
   }
 
   match = step.match(/^(.+?)\s*(?:텍스트가\s*)?보인다$/);
   if (match) {
     return { action: "expectText", target: match[1].trim() };
+  }
+
+  match = step.match(/^(.+?)\s*(?:텍스트가\s*)?(?:표시된다|노출된다|존재한다)$/);
+  if (match) {
+    return { action: "expectText", target: match[1].trim() };
+  }
+
+  match = step.match(/^(.+?)\s*버튼이\s*비활성화(?:\(disabled\))?\s*상태(?:로\s*표시된다|다)?$/);
+  if (match) {
+    return { action: "expectButtonDisabled", target: match[1].trim() };
+  }
+
+  match = step.match(/^(.+?)\s*버튼이\s*활성화(?:\(enabled\))?\s*상태(?:로\s*(?:변경된다|표시된다)|다)?$/);
+  if (match) {
+    return { action: "expectButtonEnabled", target: match[1].trim() };
   }
 
   match = step.match(/^URL에\s*['"]?(.+?)['"]?\s*(?:가|이)?\s*포함된다$/i);

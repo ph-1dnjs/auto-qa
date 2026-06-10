@@ -6,10 +6,10 @@
   <title>AutoQA</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
-<body data-season="spring">
+<body>
   <div class="viewport-drag-gap" aria-hidden="true"></div>
   <main class="app">
-    <header class="topbar">
+    <header class="topbar app-topbar">
       <button id="homeBrand" class="brand-mark brand-button" type="button" aria-label="홈으로 이동">
         <div class="brand-seal">U</div>
         <div class="brand-copy">
@@ -19,55 +19,39 @@
       </button>
 
       <nav class="global-nav" aria-label="주요 메뉴">
-        <button id="navScenarioPage" class="nav-pill" type="button">시나리오 생성</button>
-        <button id="navFlowPage" class="nav-pill" type="button" disabled aria-disabled="true">Flow Chart</button>
-        <button id="navQaPage" class="nav-pill primary-nav" type="button">QA 실행</button>
+        <button id="navQaPage" class="nav-pill primary-nav" type="button">실행 콘솔</button>
+        <button id="navScenarioPage" class="nav-pill" type="button">시나리오</button>
       </nav>
     </header>
 
     <section id="homePage" class="page page-home">
-      <section class="hero-card">
-        <div class="hero-orbit" aria-hidden="true">
-          <span class="orbit-line orbit-line-one"></span>
-          <span class="orbit-line orbit-line-two"></span>
-          <span class="orbit-line orbit-line-three"></span>
-          <span class="season-glow season-glow-a"></span>
-          <span class="season-glow season-glow-b"></span>
-        </div>
-
-        <div class="hero-grid">
-          <div class="hero-copy">
-            <p class="eyebrow">사용자 친화적인 QA 오케스트레이션</p>
-            <h1>Auto QA</h1>
-            <p class="hero-description">
-              웹 서비스 QA 자동화를 위해 시나리오를 수집하고 실행하며, 진행 상태와 결과 리포트를
-              한 흐름에서 빠르게 확인할 수 있도록 만든 통합 워크스페이스입니다.
-            </p>
-
-            <div class="hero-inline-actions">
-              <button id="homeScenarioCta" class="secondary compact-button" type="button">시나리오 설계 시작</button>
-              <button id="homeQaCta" class="primary compact-button" type="button">즉시 QA 실행</button>
-              <button id="openGuide" class="ghost compact-button" type="button">온보딩 가이드</button>
-            </div>
-
+      <div class="home-ambient-glow" aria-hidden="true"></div>
+      <section class="home-minimal-shell" aria-label="메인 입력 영역">
+        <h1 class="home-minimal-title">Auto QA</h1>
+        <form id="homePromptForm" class="home-minimal-form">
+          <label class="agent-prompt-label sr-only" for="homePromptInput">빠른 명령 또는 URL</label>
+          <div class="home-minimal-input">
+            <input
+              id="homePromptInput"
+              type="text"
+              placeholder="명령어 또는 URL 입력"
+              autocomplete="off"
+              spellcheck="false"
+            >
+            <button id="homePromptSubmit" class="home-minimal-submit" type="button" aria-label="입력 실행">이동</button>
           </div>
-
-          <aside class="theme-panel" aria-label="계절 테마 선택">
-            <div class="season-selector" role="list">
-              <button class="season-chip active" type="button" data-season="spring" aria-label="봄 테마"></button>
-              <button class="season-chip" type="button" data-season="summer" aria-label="여름 테마"></button>
-              <button class="season-chip" type="button" data-season="autumn" aria-label="가을 테마"></button>
-              <button class="season-chip" type="button" data-season="winter" aria-label="겨울 테마"></button>
-            </div>
-          </aside>
-        </div>
+          <section id="homeCommandMenu" class="home-command-menu hidden" aria-label="사용 가능한 명령어">
+            <div id="homeCommandList" class="home-command-list"></div>
+          </section>
+          <p id="homePromptHint" class="agent-prompt-hint hidden">`/시나리오`, `/실행`, URL 입력을 지원합니다.</p>
+        </form>
       </section>
 
-      <section class="history-panel">
+      <section class="history-panel workspace-dashboard hidden" aria-hidden="true">
         <div class="section-head">
           <div>
-            <p class="eyebrow small">History & Signals</p>
-            <h2>QA 히스토리와 위험 신호</h2>
+            <p class="eyebrow small">Operations Overview</p>
+            <h2>운영 지표와 위험 신호</h2>
           </div>
           <span id="historySummary">아직 저장된 실행 이력이 없습니다.</span>
         </div>
@@ -78,11 +62,17 @@
             <div><span>회귀 감지</span><strong id="historyRegressionCount">0</strong></div>
           </div>
           <article class="history-card">
-            <h3>최근 실행</h3>
+            <div class="history-card-head">
+              <h3>최근 실행</h3>
+              <span>최근 상태를 빠르게 스캔</span>
+            </div>
             <div id="historyRecentRuns" class="history-list"></div>
           </article>
           <article class="history-card">
-            <h3>Hot Spot</h3>
+            <div class="history-card-head">
+              <h3>Hot Spot</h3>
+              <span>반복 실패 시나리오 집중 확인</span>
+            </div>
             <div id="historyHotspots" class="history-list"></div>
           </article>
         </div>
@@ -90,36 +80,18 @@
     </section>
 
     <section id="scenarioPage" class="page hidden">
-      <section class="page-card builder-card">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow small">Scenario Atelier</p>
-            <h2>시나리오 생성</h2>
-            <span>대상 URL을 기준으로 흐름을 수집하고, 운영 품질 관점에서 정리된 시나리오를 완성합니다.</span>
+      <section class="scenario-shell">
+        <header class="scenario-browser-chrome">
+          <div class="scenario-browser-controls" aria-hidden="true">
+            <span class="scenario-browser-dot dot-red"></span>
+            <span class="scenario-browser-dot dot-yellow"></span>
+            <span class="scenario-browser-dot dot-green"></span>
           </div>
-        </div>
-
-        <div class="page-intro-grid">
-          <article class="intro-card">
-            <strong>추출 중심 작성</strong>
-            <p>실제 페이지에서 액션을 수집한 뒤 Markdown 시나리오로 정리합니다.</p>
-          </article>
-          <article class="intro-card">
-            <strong>직접 편집 허용</strong>
-            <p>팀의 언어에 맞춰 문장을 손보거나 구조를 재배치할 수 있습니다.</p>
-          </article>
-          <article class="intro-card">
-            <strong>운영 전환 준비</strong>
-            <p>저장한 시나리오는 QA 실행 콘솔과 바로 공유됩니다.</p>
-          </article>
-        </div>
-
-        <div class="builder-toolbar">
-          <label class="field url-field grow">
-            <span>대상 URL</span>
-            <div class="url-input-wrap">
+          <label class="field url-field scenario-browser-address">
+            <span class="sr-only">대상 URL</span>
+            <div class="scenario-browser-address-wrap">
               <input id="scenarioBaseUrl" type="url" placeholder="https://example.com" autocomplete="url">
-              <button id="toggleScenarioUrlHistory" class="history-trigger" type="button" aria-label="이전 기록 불러오기">이전 기록 불러오기</button>
+              <button id="toggleScenarioUrlHistory" class="history-trigger scenario-history-trigger" type="button" aria-label="이전 기록 불러오기">기록</button>
             </div>
             <div id="scenarioUrlHistoryMenu" class="url-history-menu hidden" aria-label="이전 URL 기록">
               <div class="url-history-head">
@@ -129,269 +101,68 @@
               <div id="scenarioUrlHistoryList" class="url-history-list"></div>
             </div>
           </label>
-          <div class="builder-actions">
-            <button id="extractScenario" class="secondary" type="button">시나리오 추출</button>
+          <div class="scenario-browser-actions">
             <button id="openScenario" class="ghost" type="button">불러오기</button>
             <button id="saveScenario" class="primary" type="button">저장</button>
           </div>
-        </div>
+        </header>
 
-        <div class="editor-wrap standalone">
-          <div class="section-head">
-            <div>
-              <h2>QA 시나리오</h2>
-              <span id="scenarioFile">직접 작성 또는 Markdown/JSON 파일 불러오기</span>
+        <section class="scenario-editor-frame">
+          <div class="scenario-editor-topbar">
+            <div class="scenario-editor-heading">
+              <span class="scenario-editor-section-label">SCENARIO</span>
+              <div class="scenario-editor-title-group">
+                <h2>시나리오 편집기</h2>
+                <span class="scenario-editor-support-text">Markdown / JSON 지원</span>
+              </div>
             </div>
-            <button id="toggleScenarioAccordion" class="secondary compact-button" type="button">접기</button>
-          </div>
-          <div id="scenarioAccordion" class="scenario-accordion open">
-            <textarea id="scenarioText" spellcheck="false" placeholder="시나리오를 직접 편집하거나 화면에서 추출해보세요."></textarea>
-          </div>
-        </div>
-
-      </section>
-    </section>
-
-    <section id="flowPage" class="page hidden">
-      <section class="page-card flow-page-card">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow small">Flow Builder</p>
-            <h2>Flow Chart</h2>
-            <span>플로우 차트 기능은 현재 임시 비활성화 상태입니다.</span>
-          </div>
-        </div>
-
-        <section class="page-intro-grid">
-          <article class="intro-card">
-            <strong>임시 차단</strong>
-            <p>현재 변경 건에서는 플로우 차트 편집, 시나리오 변환, 차트 조작 기능을 모두 막아 둡니다.</p>
-          </article>
-          <article class="intro-card">
-            <strong>대체 경로</strong>
-            <p>시나리오 생성과 QA 실행 기능은 기존처럼 사용할 수 있습니다.</p>
-          </article>
-        </section>
-
-        <section class="flow-builder-panel" hidden>
-          <div class="flow-builder-layout">
-            <aside class="flow-toolbox">
-              <div class="flow-panel-head">
-                <strong>도형 카탈로그</strong>
-                <span>드래그 없이 바로 배치</span>
-              </div>
-
-              <div class="flow-tool-group">
-                <div class="flow-shape-library">
-                  <button class="flow-shape-card active" type="button" data-flow-shape-card="start">
-                    <span class="flow-shape-preview flow-shape-preview-start"></span>
-                    <strong>시작 / 종료</strong>
-                    <small>흐름의 진입점, 종착점</small>
-                  </button>
-                  <button class="flow-shape-card" type="button" data-flow-shape-card="process">
-                    <span class="flow-shape-preview flow-shape-preview-process"></span>
-                    <strong>액션 / 프로세스</strong>
-                    <small>화면 동작, 입력, 검증</small>
-                  </button>
-                  <button class="flow-shape-card" type="button" data-flow-shape-card="decision">
-                    <span class="flow-shape-preview flow-shape-preview-decision"></span>
-                    <strong>판단 / 분기</strong>
-                    <small>예/아니오, 성공/실패 분기</small>
-                  </button>
-                  <button class="flow-shape-card" type="button" data-flow-shape-card="preparation">
-                    <span class="flow-shape-preview flow-shape-preview-check"></span>
-                    <strong>검증 / 확인</strong>
-                    <small>Then 결과 검증</small>
-                  </button>
-                  <button class="flow-shape-card" type="button" data-flow-shape-card="input">
-                    <span class="flow-shape-preview flow-shape-preview-input"></span>
-                    <strong>입력 / 데이터</strong>
-                    <small>데이터 입력, 저장 흐름</small>
-                  </button>
-                </div>
-
-                <label class="flow-select-field hidden">
-                  <span>도형 종류</span>
-                  <select id="flowShapeType">
-                    <optgroup label="흐름 기본">
-                      <option value="start">시작 / Terminator</option>
-                      <option value="process" selected>프로세스 / Action</option>
-                      <option value="decision">판단 / Decision</option>
-                      <option value="end">종료 / Terminator</option>
-                    </optgroup>
-                    <optgroup label="입출력 / 문서">
-                      <option value="input">입력 / 출력</option>
-                      <option value="document">문서</option>
-                      <option value="manualInput">수동 입력</option>
-                    </optgroup>
-                    <optgroup label="시스템 / 저장">
-                      <option value="predefinedProcess">사전정의 프로세스</option>
-                      <option value="database">데이터베이스</option>
-                      <option value="preparation">준비 / Preparation</option>
-                    </optgroup>
-                  </select>
-                </label>
-                <button id="addFlowNode" class="secondary" type="button">선택 도형 추가</button>
-              </div>
-
-              <div class="flow-tool-group">
-                <strong>연결과 정리</strong>
-                <div class="flow-tool-buttons flow-tool-buttons-stack">
-                  <button id="clearFlowChart" class="flow-tool-button" type="button">전체 초기화</button>
-                </div>
-              </div>
-
-              <div class="flow-tool-group flow-guide-card">
-                <strong id="flowGuideTitle">액션 도형</strong>
-                <p id="flowGuideDescription">사용자가 실제로 수행하거나 시스템이 처리하는 동작을 적습니다. 예: 로그인 버튼 클릭, 장바구니 추가.</p>
-              </div>
-
-              <div class="flow-tool-group flow-guide-card">
-                <strong>도형 사용법</strong>
-                <ul class="flow-guide-list">
-                  <li><span>시작</span><small>흐름의 진입점</small></li>
-                  <li><span>액션</span><small>화면 동작, 입력, 검증</small></li>
-                  <li><span>판단</span><small>예/아니오, 성공/실패 분기</small></li>
-                  <li><span>입력/문서/DB</span><small>데이터 입출력, 문서 처리, 저장 흐름</small></li>
-                </ul>
-              </div>
-            </aside>
-
-            <div class="flow-workspace">
-              <div class="flow-stage-shell">
-                <div class="flow-stage-head">
-                  <span id="flowSelectionStatus">도형을 선택하고 추가하세요.</span>
-                  <div class="flow-stage-head-actions">
-                    <span id="flowConnectStatus">도형을 선택하면 연결 지점이 표시됩니다.</span>
-                    <div class="flow-zoom-controls">
-                      <button id="zoomOutFlow" class="flow-tool-button" type="button" aria-label="축소">-</button>
-                      <span id="flowZoomLabel">100%</span>
-                      <button id="zoomInFlow" class="flow-tool-button" type="button" aria-label="확대">+</button>
-                      <button id="resetFlowZoom" class="flow-tool-button" type="button">기본 배율</button>
-                    </div>
-                  </div>
-                </div>
-                <div id="flowCanvasViewport" class="flow-canvas-viewport">
-                  <div id="flowCanvas" class="flow-canvas" aria-label="플로우 차트 편집 영역">
-                    <svg id="flowEdgeLayer" class="flow-edge-layer" aria-hidden="true"></svg>
-                    <div id="flowNodeLayer" class="flow-node-layer"></div>
-                  </div>
-                </div>
-              </div>
-
-              <aside id="flowPropertiesPanel" class="flow-properties-panel">
-                <div class="flow-panel-head">
-                  <strong>속성</strong>
-                  <button id="closeFlowDrawer" class="flow-panel-menu" type="button" aria-label="속성 닫기">...</button>
-                </div>
-
-                <div id="flowNodeProperties">
-                  <div class="flow-tool-group">
-                    <label class="flow-select-field">
-                      <span>레이블</span>
-                      <textarea id="flowNodeLabelInput" class="flow-textarea" rows="3" placeholder="예: 로그인 페이지 접속"></textarea>
-                    </label>
-                  </div>
-
-                  <div class="flow-tool-group">
-                    <label class="flow-select-field">
-                      <span>노드 타입</span>
-                      <select id="flowNodeTypeSelect">
-                        <option value="start">시작 / 종료</option>
-                        <option value="process">액션 / 프로세스</option>
-                        <option value="decision">판단 / 분기</option>
-                        <option value="end">종료</option>
-                        <option value="input">입력 / 데이터</option>
-                        <option value="document">문서</option>
-                        <option value="manualInput">수동 입력</option>
-                        <option value="predefinedProcess">사전정의 프로세스</option>
-                        <option value="database">데이터베이스</option>
-                        <option value="preparation">검증 / 준비</option>
-                      </select>
-                    </label>
-                  </div>
-
-                  <div class="flow-tool-group">
-                    <label class="flow-select-field">
-                      <span>텍스트 크기</span>
-                      <input id="flowNodeFontSizeInput" type="number" min="10" max="28" step="1" value="16">
-                    </label>
-                  </div>
-
-                  <div class="flow-tool-group flow-size-grid">
-                    <label class="flow-select-field">
-                      <span>너비</span>
-                      <input id="flowNodeWidthInput" type="number" min="72" max="480" step="24" value="240">
-                    </label>
-                    <label class="flow-select-field">
-                      <span>높이</span>
-                      <input id="flowNodeHeightInput" type="number" min="72" max="360" step="24" value="120">
-                    </label>
-                  </div>
-
-                  <div class="flow-tool-group">
-                    <span class="flow-property-label">색상</span>
-                    <div id="flowColorPalette" class="flow-color-palette">
-                      <button class="flow-color-swatch active" type="button" data-flow-color="#2fbf89" style="--swatch:#2fbf89" aria-label="민트"></button>
-                      <button class="flow-color-swatch" type="button" data-flow-color="#2f6fe4" style="--swatch:#2f6fe4" aria-label="파랑"></button>
-                      <button class="flow-color-swatch" type="button" data-flow-color="#5a43c3" style="--swatch:#5a43c3" aria-label="보라"></button>
-                      <button class="flow-color-swatch" type="button" data-flow-color="#6a5a20" style="--swatch:#6a5a20" aria-label="올리브"></button>
-                      <button class="flow-color-swatch" type="button" data-flow-color="#5d2f36" style="--swatch:#5d2f36" aria-label="와인"></button>
-                      <button class="flow-color-swatch" type="button" data-flow-color="#2b2d33" style="--swatch:#2b2d33" aria-label="차콜"></button>
-                      <button class="flow-color-swatch" type="button" data-flow-color="#5c3a12" style="--swatch:#5c3a12" aria-label="브라운"></button>
-                      <button class="flow-color-swatch" type="button" data-flow-color="#24204c" style="--swatch:#24204c" aria-label="인디고"></button>
-                      <button class="flow-color-swatch" type="button" data-flow-color="#4c62f3" style="--swatch:linear-gradient(135deg,#1fd0b5,#4c62f3)" aria-label="그라디언트"></button>
-                    </div>
-                    <label class="flow-select-field">
-                      <span>커스텀 색상</span>
-                      <input id="flowCustomColor" type="color" value="#2f6fe4">
-                    </label>
-                    <button id="applyFlowColor" class="flow-tool-button" type="button">선택 도형에 색상 적용</button>
-                  </div>
-                </div>
-
-                <div id="flowEdgeProperties" class="hidden">
-                  <label class="flow-select-field">
-                    <span>선 텍스트</span>
-                    <input id="flowEdgeLabelInput" type="text" placeholder="비워둘 수 있습니다.">
-                  </label>
-                </div>
-
-                <button id="deleteFlowSelection" class="flow-delete-button" type="button">삭제</button>
-              </aside>
+            <div class="scenario-editor-nav-actions" aria-label="화면 이동">
+              <button id="scenarioGoHome" class="scenario-home-button" type="button" aria-label="홈으로 이동">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3.25 3.75 10v10.25h5.5V14.5h5.5v5.75h5.5V10L12 3.25Z" />
+                </svg>
+              </button>
+              <button id="scenarioGoQa" class="scenario-home-button scenario-run-button" type="button" aria-label="시나리오 실행으로 이동">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 5.2v13.6L18.8 12 8 5.2Z" />
+                </svg>
+              </button>
             </div>
           </div>
+
+          <div id="scenarioAccordion" class="scenario-accordion open scenario-editor-body">
+            <div class="scenario-editor-surface">
+              <textarea id="scenarioText" spellcheck="false" placeholder="시나리오를 직접 편집하거나 화면에서 추출해보세요."></textarea>
+            </div>
+          </div>
+
+          <footer class="scenario-editor-footer">
+            <div class="scenario-editor-statusbar">
+              <span id="scenarioFile" class="scenario-status-text">Markdown 형식 권장</span>
+              <span class="scenario-status-item"><kbd>⌘S</kbd> 저장</span>
+              <span class="scenario-status-item"><kbd>⌘O</kbd> 불러오기</span>
+            </div>
+            <div class="scenario-editor-footer-actions">
+              <button id="scenarioReset" class="ghost" type="button">초기화</button>
+              <button id="extractScenario" class="primary" type="button">추출 시작 ↗</button>
+            </div>
+          </footer>
         </section>
       </section>
     </section>
 
     <section id="qaPage" class="page hidden">
-      <section id="updateBanner" class="update-banner hidden" aria-live="polite">
-        <div>
-          <strong id="updateBannerTitle">업데이트</strong>
-          <p id="updateBannerMessage">최신 버전을 확인하고 있습니다.</p>
-        </div>
-        <div class="update-banner-actions">
-          <button id="checkForUpdates" class="secondary compact-button" type="button">업데이트 확인</button>
-          <button id="installUpdate" class="primary compact-button hidden" type="button">지금 설치</button>
-        </div>
-      </section>
-
-      <section class="page-card">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow small">Execution Lounge</p>
-            <h2>QA 실행</h2>
-            <span>실행 옵션, 진행률, 미리보기, 결과 요약을 하나의 흐름으로 정리했습니다.</span>
+      <section class="qa-dashboard qa-execution-shell">
+        <header class="page-browser-header qa-browser-header qa-execution-browser">
+          <div class="page-browser-caption">
+            <p class="eyebrow small">Scenario Execution</p>
           </div>
-        </div>
-
-        <section class="run-panel">
-          <label class="field url-field grow">
-            <span>테스트 대상 URL</span>
-            <div class="url-input-wrap">
+          <label class="field url-field page-browser-field">
+            <span class="sr-only">실행 대상 URL</span>
+            <div class="page-browser-input-wrap">
+              <span class="page-browser-dot" aria-hidden="true"></span>
               <input id="qaBaseUrl" type="url" placeholder="https://example.com" autocomplete="url">
-              <button id="toggleUrlHistory" class="history-trigger" type="button" aria-label="이전 기록 불러오기">이전 기록 불러오기</button>
+              <button id="toggleUrlHistory" class="history-trigger browser-chip-button" type="button" aria-label="이전 기록 불러오기">기록</button>
             </div>
             <div id="urlHistoryMenu" class="url-history-menu hidden" aria-label="이전 URL 기록">
               <div class="url-history-head">
@@ -401,203 +172,423 @@
               <div id="urlHistoryList" class="url-history-list"></div>
             </div>
           </label>
-          <label class="field compact">
-            <span>워커</span>
-            <input id="workers" type="number" min="1" max="16" value="1">
-          </label>
-          <label class="toggle">
-            <input id="headless" type="checkbox" checked>
-            <span>Headless</span>
-          </label>
-          <label class="toggle">
-            <input id="failFast" type="checkbox">
-            <span>Fail-fast</span>
-          </label>
-          <button id="runQa" class="primary" type="button">QA 실행</button>
-        </section>
+          <div class="page-browser-actions qa-browser-status-strip">
+            <span class="qa-status-chip"><strong id="statusText">대기 중</strong></span>
+            <span class="qa-status-chip subtle"><span id="qaPreviewLocation">https://example.com</span></span>
+          </div>
+        </header>
 
-        <section class="workspace">
-          <div class="editor-wrap">
-            <div class="section-head">
-              <div>
-                <h2>실행 대상 시나리오</h2>
-                <span>불러온 시나리오를 확인한 뒤 실행할 수 있습니다.</span>
-              </div>
-              <button id="openScenarioQa" class="secondary compact-button" type="button">시나리오 불러오기</button>
-            </div>
-            <div class="scenario-accordion open">
-              <textarea id="qaScenarioText" spellcheck="false" placeholder="시나리오 생성 페이지에서 작성한 내용을 붙여넣거나, 파일을 불러오세요."></textarea>
-            </div>
-            <section id="progressPreview" class="progress-preview hidden" aria-live="polite">
-              <div class="progress-preview-head">
-                <h2>테스트 화면 Preview</h2>
-                <span id="progressPreviewSummary">대기 중</span>
-              </div>
-              <div class="progress-preview-stage">
-                <img id="progressPreviewImage" alt="실시간 QA 테스트 화면">
-                <div id="progressPreviewEmpty" class="progress-preview-empty">테스트 화면을 기다리는 중입니다.</div>
-              </div>
-              <div class="progress-preview-caption">
-                <strong id="progressPreviewTitle">QA 실행 준비</strong>
-                <span id="progressPreviewUrl">-</span>
-              </div>
-            </section>
+        <section class="qa-shell qa-execution-workspace">
+          <aside class="qa-sidebar qa-execution-sidebar">
+          <div class="qa-sidebar-brand">
+            <button id="qaSidebarHome" class="qa-sidebar-icon-button" type="button" aria-label="홈으로 이동">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3.25 3.75 10v10.25h5.5V14.5h5.5v5.75h5.5V10L12 3.25Z" />
+              </svg>
+            </button>
+            <button id="qaSidebarScenario" class="qa-sidebar-icon-button" type="button" aria-label="시나리오 편집으로 이동">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16.85 3.55a2.05 2.05 0 0 1 2.9 2.9L8.62 17.58 4.5 19.5l1.92-4.12L16.85 3.55Zm-9.15 12.62-.68 1.46 1.46-.68L17.5 7.93 16.72 7.15 7.7 16.17Z" />
+              </svg>
+            </button>
           </div>
 
-          <aside class="results">
-            <div class="section-head">
+          <div class="qa-sidebar-status">
+            <span>상태</span>
+            <p id="qaSidebarStatusMeta">브라우저 준비 완료</p>
+          </div>
+        </aside>
+
+        <div class="qa-stage qa-execution-stage">
+          <section id="updateBanner" class="update-banner hidden qa-update-banner" aria-live="polite">
+            <div>
+              <strong id="updateBannerTitle">업데이트</strong>
+              <p id="updateBannerMessage">최신 버전을 확인하고 있습니다.</p>
+            </div>
+            <div class="update-banner-actions">
+              <button id="checkForUpdates" class="secondary compact-button" type="button">업데이트 확인</button>
+              <button id="installUpdate" class="primary compact-button hidden" type="button">지금 설치</button>
+            </div>
+          </section>
+
+          <header class="qa-stage-header qa-execution-stage-header">
+            <div class="qa-stage-address">
+              <span class="qa-stage-address-icon">◎</span>
+              <span>Active Session</span>
+              <span class="qa-stage-address-divider"></span>
+              <strong id="qaStageModeLabel">실행 구성</strong>
+            </div>
+            <div class="qa-stage-user">
+              <span class="qa-stage-user-icon">○</span>
+              <span>JD</span>
+            </div>
+          </header>
+
+          <div id="qaStateConfigure" class="qa-state qa-state-active">
+            <div class="qa-state-title-row">
               <div>
-                <h2>실행 결과</h2>
-                <span id="statusText">대기 중</span>
+                <h1 id="qaConfigureTitle">실행 구성</h1>
+              </div>
+              <button id="runQa" class="primary qa-main-action" type="button">실행 시작</button>
+            </div>
+
+            <div class="qa-config-grid">
+              <div class="qa-config-main">
+                <section class="qa-card qa-config-card">
+                  <div class="qa-card-head">
+                    <div>
+                      <p class="qa-panel-label">Run Setup</p>
+                      <h2>실행 대상 설정</h2>
+                    </div>
+                  </div>
+                  <div class="qa-config-fields">
+                    <div class="qa-config-inline">
+                      <label class="field compact qa-modern-field">
+                        <span>브라우저</span>
+                        <select id="browserSelect">
+                          <option value="chromium">Chromium (기본)</option>
+                        </select>
+                      </label>
+                      <label class="field compact qa-modern-field qa-workers-field">
+                        <span>워커 수</span>
+                        <input id="workers" type="number" min="1" max="16" value="1">
+                      </label>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="qa-card qa-config-card">
+                  <div class="qa-card-head">
+                    <div>
+                      <p class="qa-panel-label">실행 옵션</p>
+                      <h2>기본 동작 선택</h2>
+                    </div>
+                  </div>
+                  <div class="qa-option-row">
+                    <label class="toggle qa-modern-toggle">
+                      <input id="headless" type="checkbox" checked>
+                      <span>
+                        <strong>헤드리스 모드</strong>
+                        <small>백그라운드에서 브라우저 실행</small>
+                      </span>
+                    </label>
+                    <label class="toggle qa-modern-toggle">
+                      <input id="failFast" type="checkbox">
+                      <span>
+                        <strong>실패 시 즉시 중단</strong>
+                        <small>오류 발생 시 실행 중지</small>
+                      </span>
+                    </label>
+                  </div>
+                </section>
+
+                <section class="qa-card qa-config-card qa-scenario-selection-card">
+                  <div class="qa-card-head">
+                    <div>
+                      <p class="qa-panel-label">Scenario Library</p>
+                      <h2>실행 대상 시나리오</h2>
+                    </div>
+                    <div class="qa-panel-actions">
+                      <button id="openScenarioQa" class="secondary compact-button" type="button">불러오기</button>
+                      <button id="navScenarioInline" class="ghost compact-button" type="button" data-nav-target="scenario">수정하기</button>
+                    </div>
+                  </div>
+                  <div class="qa-selection-toolbar">
+                    <label class="field compact-field scenario-filter-field qa-modern-field">
+                      <span>시나리오 검색</span>
+                      <input id="qaScenarioFilter" type="text" placeholder="제목, feature, tag, ID 검색">
+                    </label>
+                    <span class="qa-selection-count">선택 가능 <strong id="qaScenarioCount">0</strong></span>
+                  </div>
+                  <div class="qa-selection-layout">
+                    <div id="qaScenarioList" class="qa-scenario-list"></div>
+                    <div class="qa-scenario-detail">
+                      <div id="qaScenarioMeta" class="qa-scenario-meta"></div>
+                      <div id="qaScenarioSteps" class="qa-scenario-steps"></div>
+                    </div>
+                  </div>
+                  <div class="scenario-accordion open qa-manual-editor">
+                    <textarea id="qaScenarioText" spellcheck="false" placeholder="시나리오 생성 페이지에서 작성한 내용을 붙여넣거나, 파일을 불러오세요."></textarea>
+                  </div>
+                </section>
+              </div>
+
+              <aside class="qa-config-side">
+                <section class="qa-card qa-summary-panel">
+                  <div class="qa-card-head">
+                    <div>
+                      <p class="qa-panel-label">실행 요약</p>
+                      <h2>현재 설정</h2>
+                    </div>
+                  </div>
+                  <div class="qa-summary-list">
+                    <div><span>시나리오</span><strong id="totalCount">0</strong></div>
+                    <div><span>총 단계</span><strong id="qaSummaryStepCount">0</strong></div>
+                    <div><span>예상 시간</span><strong id="estimatedTime">-</strong></div>
+                    <div><span>브라우저</span><strong id="qaSummaryBrowser">Chromium</strong></div>
+                    <div><span>워커</span><strong id="qaSummaryWorkers">1</strong></div>
+                  </div>
+                  <div class="qa-summary-foot">
+                    <span id="qaSelectedScenarioStatus">선택된 시나리오 없음</span>
+                  </div>
+                  <div class="qa-summary-tags">
+                    <span>태그 · 선택 항목</span>
+                    <div id="qaSelectedTags" class="qa-tag-list">
+                      <span class="qa-tag-empty">선택된 태그가 없습니다.</span>
+                    </div>
+                  </div>
+                </section>
+              </aside>
+            </div>
+          </div>
+
+          <div id="qaStateRunning" class="qa-state hidden">
+            <div class="qa-state-title-row">
+              <div>
+                <h1 id="qaRunTitle">실행 모니터링</h1>
+              </div>
+              <button id="cancelQa" class="danger qa-main-action hidden" type="button">실행 중지</button>
+            </div>
+
+            <div class="qa-monitor-grid">
+              <div class="qa-monitor-main">
+                <section class="qa-worker-strip" id="qaWorkerGrid"></section>
+
+                <section class="qa-card qa-progress-card">
+                  <div class="qa-progress-summary">
+                    <div>
+                      <span>전체 진행률</span>
+                      <strong id="progressPercent">0%</strong>
+                    </div>
+                    <div class="qa-progress-counters">
+                      <span>통과 <strong id="passCount">0</strong></span>
+                      <span>실패 <strong id="failCount">0</strong></span>
+                    </div>
+                  </div>
+                  <div class="progress-bar" aria-label="QA 진행률">
+                    <div id="progressFill"></div>
+                  </div>
+                  <div class="qa-progress-meta-row">
+                    <span id="progressPhase">대기 중</span>
+                    <span>경과 <strong id="elapsedTime">-</strong></span>
+                  </div>
+                </section>
+
+                <section id="progressPreview" class="qa-card progress-preview qa-preview-panel" aria-live="polite">
+                  <div class="qa-card-head">
+                    <div>
+                      <p class="qa-panel-label">실시간 화면</p>
+                      <h2>테스트 미리보기</h2>
+                    </div>
+                    <span id="progressPreviewSummary">대기 중</span>
+                  </div>
+                  <div class="progress-preview-stage">
+                    <img id="progressPreviewImage" alt="실시간 QA 테스트 화면">
+                    <div id="progressPreviewEmpty" class="progress-preview-empty">테스트 화면을 기다리는 중입니다.</div>
+                  </div>
+                  <div class="qa-preview-statusbar">
+                    <span class="qa-preview-status-dot"></span>
+                    <strong id="progressPreviewTitle">QA 실행 준비</strong>
+                    <span id="progressPreviewUrl">-</span>
+                  </div>
+                </section>
+              </div>
+
+              <aside class="qa-card qa-log-panel">
+                <div class="qa-card-head">
+                  <div>
+                    <p class="qa-panel-label">실행 로그</p>
+                    <h2>진행 로그</h2>
+                  </div>
+                  <span id="qaResultBadge" class="qa-result-badge">idle</span>
+                </div>
+                <div id="qaLiveStats" class="qa-live-stats">
+                  <div><span>전체</span><strong>0</strong></div>
+                  <div><span>완료</span><strong>0</strong></div>
+                  <div><span>실패</span><strong>0</strong></div>
+                </div>
+                <div id="qaLiveLog" class="qa-live-log"></div>
+              </aside>
+            </div>
+          </div>
+
+          <div id="qaStateComplete" class="qa-state hidden">
+            <div class="qa-state-title-row">
+              <div>
+                <h1 id="qaCompleteTitle">실행 완료</h1>
+              </div>
+              <div class="qa-complete-actions">
+                <button id="openReport" class="secondary hidden" type="button">HTML 리포트 열기</button>
+                <button id="qaDownloadVideos" class="secondary hidden" type="button">실행 동영상 저장</button>
+                <button id="qaBackToConfigure" class="ghost" type="button">실행 페이지로 돌아가기</button>
+                <button id="qaRunAgain" class="ghost" type="button">다시 실행</button>
               </div>
             </div>
-            <div class="metrics">
-              <div><span>전체</span><strong id="totalCount">0</strong></div>
-              <div><span>통과</span><strong id="passCount">0</strong></div>
-              <div><span>실패</span><strong id="failCount">0</strong></div>
-            </div>
-            <div class="progress-wrap">
-              <div class="progress-meta">
-                <span id="progressPhase">대기 중</span>
-                <strong id="progressPercent">0%</strong>
+
+            <div class="qa-complete-grid">
+              <div class="qa-complete-main">
+                <section class="qa-card qa-complete-summary">
+                  <div class="qa-complete-score">
+                    <span>통과율</span>
+                    <strong id="qaPassRate">0%</strong>
+                    <p id="qaCompletionMessage">아직 완료된 실행이 없습니다.</p>
+                  </div>
+                  <div class="qa-complete-metrics">
+                    <div><span>실행 시간</span><strong id="qaCompletionDuration">-</strong></div>
+                    <div><span>총 단계</span><strong id="qaCompletionSteps">0</strong></div>
+                    <div><span>브라우저</span><strong id="qaCompletionBrowser">-</strong></div>
+                  </div>
+                </section>
+
+                <section class="qa-card qa-final-results">
+                  <div class="qa-card-head">
+                    <div>
+                      <p class="qa-panel-label">최종 결과</p>
+                      <h2>시나리오 실행 결과</h2>
+                    </div>
+                  </div>
+                  <div id="resultList" class="result-list"></div>
+                  <div class="result-actions qa-results-actions">
+                    <label class="field compact-field hidden" id="failureExportField">
+                      <span>실패 내보내기</span>
+                      <select id="failureExportFormat">
+                        <option value="md">Markdown (.md)</option>
+                        <option value="excel">Excel CSV (.csv)</option>
+                      </select>
+                    </label>
+                    <button id="exportFailures" class="secondary hidden" type="button">실패 파일 추출</button>
+                  </div>
+                </section>
               </div>
-              <div class="progress-bar" aria-label="QA 진행률">
-                <div id="progressFill"></div>
-              </div>
-              <div class="time-grid">
-                <span>예상 <strong id="estimatedTime">-</strong></span>
-                <span>경과 <strong id="elapsedTime">-</strong></span>
-              </div>
-              <button id="cancelQa" class="danger hidden" type="button">QA 취소하기</button>
+
+              <aside class="qa-card qa-log-panel qa-log-panel-complete">
+                <div class="qa-card-head">
+                  <div>
+                    <p class="qa-panel-label">실행 로그</p>
+                    <h2>완료 로그</h2>
+                  </div>
+                </div>
+                <div id="qaCompleteLog" class="qa-live-log"></div>
+              </aside>
             </div>
-            <div id="resultList" class="result-list"></div>
-            <div class="result-actions">
-              <label class="field compact-field hidden" id="failureExportField">
-                <span>실패 내보내기</span>
-                <select id="failureExportFormat">
-                  <option value="md">Markdown (.md)</option>
-                  <option value="excel">Excel CSV (.csv)</option>
-                </select>
-              </label>
-              <button id="exportFailures" class="secondary hidden" type="button">실패 파일 추출</button>
-              <button id="openReport" class="secondary hidden" type="button">HTML 리포트 열기</button>
-            </div>
-          </aside>
+          </div>
+        </div>
         </section>
       </section>
     </section>
 
-    <section id="extractorShell" class="extractor-shell hidden">
-      <div class="extractor-toolbar">
-        <div>
-          <h2>시나리오 추출</h2>
-          <span id="extractorUrl">대상 URL이 여기에 표시됩니다</span>
-        </div>
-        <div class="extractor-toolbar-actions">
-          <button id="toggleExtractorSidebar" class="secondary" type="button" aria-expanded="false">
-            도구 열기
-          </button>
-          <button id="closeExtractor" class="secondary" type="button">닫기</button>
-        </div>
-      </div>
-      <div class="extractor-content">
-        <div class="extractor-webview-stage">
-          <webview
-            id="extractorWebview"
-            partition="persist:autoqa-extractor"
-            autosize="on"
-            minwidth="320"
-            minheight="420"
-            allowpopups
-          ></webview>
-          <div id="extractorResizeOverlay" class="extractor-resize-overlay hidden" aria-live="polite">
-            <strong>화면 조정중입니다.</strong>
-            <span>웹뷰 레이아웃을 다시 맞추고 있습니다.</span>
-          </div>
-        </div>
-        <aside class="extractor-sidebar" aria-label="현재 작성된 시나리오">
-          <div class="extractor-sidebar-head">
-            <h2>현재 시나리오</h2>
-            <div class="extractor-sidebar-actions">
-              <span id="extractorScenarioCount">0줄</span>
-              <button id="saveExtractorScenario" class="secondary" type="button">MD 저장</button>
+    <section id="extractorPage" class="page hidden page-extractor">
+      <div id="extractorShell" class="extractor-shell">
+        <div class="extractor-toolbar">
+          <div class="extractor-toolbar-center">
+            <div class="extractor-browser-bar">
+              <span id="extractorUrl">대상 URL이 여기에 표시됩니다</span>
             </div>
           </div>
-          <pre id="extractorScenarioPreview"></pre>
-          <div class="extractor-tools">
+          <div class="extractor-toolbar-actions">
+            <button id="toggleExtractorSidebar" class="secondary" type="button" aria-expanded="false">
+              현재 시나리오 열기
+            </button>
+            <button id="closeExtractor" class="secondary" type="button">편집기로 돌아가기</button>
+          </div>
+        </div>
+        <div class="extractor-content">
+          <div class="extractor-webview-stage">
+            <webview
+              id="extractorWebview"
+              partition="persist:autoqa-extractor"
+              autosize="on"
+              minwidth="320"
+              minheight="420"
+              allowpopups
+            ></webview>
+            <div id="extractorResizeOverlay" class="extractor-resize-overlay hidden" aria-live="polite">
+              <strong>화면 조정중입니다.</strong>
+              <span>웹뷰 레이아웃을 다시 맞추고 있습니다.</span>
+            </div>
+            <section id="extractorFloatingTool" class="extractor-floating-tool" aria-label="추출 도구">
+              <div id="extractorToolHandle" class="extractor-floating-tool-handle">
+                <div>
+                  <p class="eyebrow small">Extraction Tool</p>
+                  <strong>드래그해서 위치 이동</strong>
+                </div>
+                <span id="extractorRecorderCount">0개</span>
+              </div>
+              <div class="extractor-tools-scroll">
+                <label class="extractor-tool-field">
+                  <span>추출 시나리오 제목</span>
+                  <input id="extractorRecorderTitle" type="text" value="추출 시나리오">
+                </label>
+                <label class="extractor-tool-field">
+                  <span>Feature 경로</span>
+                  <input id="extractorRecorderFeature" type="text" placeholder="예: 인증/로그인">
+                </label>
+                <div class="extractor-tool-grid">
+                  <label class="extractor-tool-field">
+                    <span>테스트 유형</span>
+                    <select id="extractorRecorderSuite">
+                      <option value="smoke">핵심 점검 (smoke)</option>
+                      <option value="full">전체 점검 (full)</option>
+                      <option value="regression">회귀 점검 (regression)</option>
+                      <option value="edge">예외/경계 점검 (edge)</option>
+                      <option value="custom">사용자 정의 (custom)</option>
+                    </select>
+                  </label>
+                  <label class="extractor-tool-field">
+                    <span>Tags</span>
+                    <input id="extractorRecorderTags" type="text" placeholder="예: extracted, auth">
+                  </label>
+                </div>
+                <button id="extractorTogglePin" class="primary" type="button">핀 추가 켜기</button>
+                <div id="extractorRecorderSteps" class="extractor-recorder-steps"></div>
+              </div>
+              <div class="extractor-tools-actions">
+                <div class="extractor-tool-grid">
+                  <button id="extractorAddPath" class="secondary" type="button">현재 경로 추가</button>
+                  <button id="extractorUndoStep" class="secondary" type="button">마지막 삭제</button>
+                </div>
+                <div class="extractor-tool-grid">
+                  <button id="extractorClearSteps" class="danger" type="button">초기화</button>
+                  <button id="extractorCommitScenario" class="primary" type="button">시나리오 추가</button>
+                </div>
+              </div>
+            </section>
+          </div>
+          <aside class="extractor-sidebar" aria-label="현재 작성된 시나리오">
             <div class="extractor-sidebar-head">
-              <h2>추출 도구</h2>
-              <span id="extractorRecorderCount">0개</span>
-            </div>
-            <div class="extractor-tools-scroll">
-              <label class="extractor-tool-field">
-                <span>추출 시나리오 제목</span>
-                <input id="extractorRecorderTitle" type="text" value="추출 시나리오">
-              </label>
-              <label class="extractor-tool-field">
-                <span>Feature 경로</span>
-                <input id="extractorRecorderFeature" type="text" placeholder="예: 인증/로그인">
-              </label>
-              <div class="extractor-tool-grid">
-                <label class="extractor-tool-field">
-                  <span>테스트 유형</span>
-                  <select id="extractorRecorderSuite">
-                    <option value="smoke">핵심 점검 (smoke)</option>
-                    <option value="full">전체 점검 (full)</option>
-                    <option value="regression">회귀 점검 (regression)</option>
-                    <option value="edge">예외/경계 점검 (edge)</option>
-                    <option value="custom">사용자 정의 (custom)</option>
-                  </select>
-                </label>
-                <label class="extractor-tool-field">
-                  <span>Tags</span>
-                  <input id="extractorRecorderTags" type="text" placeholder="예: extracted, auth">
-                </label>
-              </div>
-              <button id="extractorTogglePin" class="primary" type="button">핀 추가 켜기</button>
-              <div id="extractorRecorderSteps" class="extractor-recorder-steps"></div>
-            </div>
-            <div class="extractor-tools-actions">
-              <div class="extractor-tool-grid">
-                <button id="extractorAddPath" class="secondary" type="button">현재 경로 추가</button>
-                <button id="extractorUndoStep" class="secondary" type="button">마지막 삭제</button>
-              </div>
-              <div class="extractor-tool-grid">
-                <button id="extractorClearSteps" class="danger" type="button">초기화</button>
-                <button id="extractorCommitScenario" class="primary" type="button">시나리오 추가</button>
+              <h2>현재 시나리오</h2>
+              <div class="extractor-sidebar-actions">
+                <span id="extractorScenarioCount">0줄</span>
+                <button id="closeExtractorSidebar" class="secondary" type="button">닫기</button>
+                <button id="saveExtractorScenario" class="secondary" type="button">MD 저장</button>
               </div>
             </div>
-          </div>
-        </aside>
+            <pre id="extractorScenarioPreview"></pre>
+            <div class="extractor-sidebar-note">
+              <strong>Current Scenario Drawer</strong>
+              <p>현재까지 수집된 시나리오가 오른쪽 드로어에 누적됩니다. 플로팅 추출 도구는 웹 화면 위에서 직접 이동시킬 수 있습니다.</p>
+            </div>
+          </aside>
+        </div>
       </div>
     </section>
 
-    <section id="guideModal" class="guide-modal hidden" aria-modal="true" role="dialog" aria-labelledby="guideTitle">
-      <div class="guide-card">
-        <div class="guide-head">
+    <section id="commandPalette" class="command-palette hidden" aria-modal="true" role="dialog" aria-labelledby="commandPaletteTitle">
+      <div class="command-palette-card">
+        <div class="command-palette-head">
           <div>
-            <p class="eyebrow">처음 시작하기</p>
-            <h2 id="guideTitle">AutoQA 사용 가이드</h2>
+            <p class="eyebrow small">Quick Search</p>
+            <h2 id="commandPaletteTitle">검색</h2>
           </div>
-          <button id="closeGuide" class="secondary compact-button" type="button">닫기</button>
         </div>
-        <div class="guide-body">
-          <article class="guide-step">
-            <strong>1. 시나리오 생성 페이지로 이동</strong>
-            <p>`시나리오 생성` 메뉴에서 대상 URL을 입력하고 화면을 열어 액션을 추출하거나 직접 시나리오를 편집합니다.</p>
-          </article>
-          <article class="guide-step">
-            <strong>2. 시나리오 저장</strong>
-            <p>작성한 시나리오는 추출기 또는 시나리오 생성 페이지에서 바로 저장할 수 있습니다.</p>
-          </article>
-          <article class="guide-step">
-            <strong>3. QA 실행 페이지에서 실행</strong>
-            <p>`QA 실행` 메뉴에서 대상 URL과 시나리오 파일을 준비한 뒤 실행하면 진행 상태와 결과를 확인할 수 있습니다.</p>
-          </article>
-        </div>
+        <label class="field command-palette-field">
+          <span>화면 및 액션 검색</span>
+          <input id="commandPaletteInput" type="text" placeholder="예: 실행 콘솔, 시나리오, 저장">
+        </label>
+        <div id="commandPaletteList" class="command-palette-list" role="listbox" aria-label="명령 목록"></div>
       </div>
     </section>
   </main>
-  <script src="./renderer.js"></script>
+  <script type="module" src="./app/index.js"></script>
 </body>
 </html>

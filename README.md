@@ -6,11 +6,39 @@ URL 기반 클라이언트 QA 자동화 데스크톱 앱입니다. 기획서의 
 
 - macOS / Windows 패키징 가능한 Electron 앱
 - URL 입력 기반 QA 실행
+- Chromium, Chrome, Edge, Firefox, WebKit 계열 브라우저 선택 실행
 - Markdown/Gherkin 스타일 시나리오 작성 및 파일 불러오기
 - Playwright 기반 브라우저 자동화
 - 기본 URL 상태 점검, 콘솔 오류, 이미지 로딩, 링크 상태 검사
 - 실패 시 스크린샷 저장
 - JSON/HTML 리포트 자동 생성
+
+## 프로젝트 구조
+
+현재 앱은 Electron + Playwright 기반이며, 렌더러는 FSD 스타일로 레이어를 나누기 시작했습니다.
+
+```text
+src/
+├─ main.js            # Electron 부트스트랩
+├─ main/              # 윈도우 생성, IPC, 업데이트 관리
+├─ preload.js         # renderer <-> main 브리지
+├─ renderer/
+│  ├─ app/            # 렌더러 진입점
+│  ├─ entities/       # 도메인 모델 레이어
+│  ├─ features/       # 사용자 행동 단위 기능 레이어
+│  ├─ pages/          # 화면 조합
+│  ├─ shared/         # 공용 설정/DOM 참조
+│  └─ widgets/        # 재사용 가능한 화면 블록 레이어
+└─ autoqa/            # 시나리오 파싱, 실행, 리포트, 이력
+```
+
+처음 읽을 때 추천 순서는 아래와 같습니다.
+
+1. 앱 시작 흐름: `src/main.js` -> `src/main/window.js` -> `src/main/ipc.js`
+2. 화면 이벤트 흐름: `src/preload.js` -> `src/renderer/app/index.js` -> `src/renderer/pages/workspace/index.js`
+3. QA 실행 흐름: `src/autoqa/parser.js` -> `src/autoqa/planner.js` -> `src/autoqa/runner.js`
+
+상세 설명은 [docs/architecture.md](/Users/una/github/auto-qa/docs/architecture.md)에서 확인할 수 있습니다.
 
 ## 실행
 

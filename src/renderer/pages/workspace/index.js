@@ -1,132 +1,24 @@
-document.body.dataset.platform = navigator.userAgent.includes("Mac") ? "mac" : "default";
+import {
+  flowGridUnit,
+  flowGuides,
+  flowShapeTemplates,
+  maxUrlHistoryItems,
+  urlHistoryStorageKey,
+} from "../../shared/config/ui.js";
+import { elements } from "../../shared/lib/dom/elements.js";
+import {
+  getFilteredHomePromptCommands,
+  getFilteredHomePromptUrls,
+  normalizeHomePromptUrl,
+  resolveHomePromptCommand,
+  shouldSuggestHomePromptCommands,
+} from "../../shared/lib/home-prompt.mjs";
 
-const elements = {
-  homePage: document.querySelector("#homePage"),
-  scenarioPage: document.querySelector("#scenarioPage"),
-  flowPage: document.querySelector("#flowPage"),
-  qaPage: document.querySelector("#qaPage"),
-  homeBrand: document.querySelector("#homeBrand"),
-  navScenarioPage: document.querySelector("#navScenarioPage"),
-  navFlowPage: document.querySelector("#navFlowPage"),
-  navQaPage: document.querySelector("#navQaPage"),
-  homeScenarioCta: document.querySelector("#homeScenarioCta"),
-  homeQaCta: document.querySelector("#homeQaCta"),
-  scenarioBaseUrl: document.querySelector("#scenarioBaseUrl"),
-  qaBaseUrl: document.querySelector("#qaBaseUrl"),
-  toggleScenarioUrlHistory: document.querySelector("#toggleScenarioUrlHistory"),
-  scenarioUrlHistoryMenu: document.querySelector("#scenarioUrlHistoryMenu"),
-  scenarioUrlHistoryList: document.querySelector("#scenarioUrlHistoryList"),
-  clearScenarioUrlHistory: document.querySelector("#clearScenarioUrlHistory"),
-  toggleUrlHistory: document.querySelector("#toggleUrlHistory"),
-  urlHistoryMenu: document.querySelector("#urlHistoryMenu"),
-  urlHistoryList: document.querySelector("#urlHistoryList"),
-  clearUrlHistory: document.querySelector("#clearUrlHistory"),
-  workers: document.querySelector("#workers"),
-  headless: document.querySelector("#headless"),
-  failFast: document.querySelector("#failFast"),
-  updateBanner: document.querySelector("#updateBanner"),
-  updateBannerTitle: document.querySelector("#updateBannerTitle"),
-  updateBannerMessage: document.querySelector("#updateBannerMessage"),
-  checkForUpdates: document.querySelector("#checkForUpdates"),
-  installUpdate: document.querySelector("#installUpdate"),
-  scenarioText: document.querySelector("#scenarioText"),
-  qaScenarioText: document.querySelector("#qaScenarioText"),
-  scenarioFile: document.querySelector("#scenarioFile"),
-  scenarioAccordion: document.querySelector("#scenarioAccordion"),
-  toggleScenarioAccordion: document.querySelector("#toggleScenarioAccordion"),
-  buildFlowFromScenario: document.querySelector("#buildFlowFromScenario"),
-  generateScenarioFromFlow: document.querySelector("#generateScenarioFromFlow"),
-  flowShapeType: document.querySelector("#flowShapeType"),
-  flowShapeCards: Array.from(document.querySelectorAll("[data-flow-shape-card]")),
-  addFlowNode: document.querySelector("#addFlowNode"),
-  deleteFlowSelection: document.querySelector("#deleteFlowSelection"),
-  clearFlowChart: document.querySelector("#clearFlowChart"),
-  flowColorPalette: document.querySelector("#flowColorPalette"),
-  flowColorSwatches: Array.from(document.querySelectorAll(".flow-color-swatch[data-flow-color]")),
-  flowCustomColor: document.querySelector("#flowCustomColor"),
-  applyFlowColor: document.querySelector("#applyFlowColor"),
-  flowPropertiesPanel: document.querySelector("#flowPropertiesPanel"),
-  closeFlowDrawer: document.querySelector("#closeFlowDrawer"),
-  flowNodeProperties: document.querySelector("#flowNodeProperties"),
-  flowEdgeProperties: document.querySelector("#flowEdgeProperties"),
-  flowNodeLabelInput: document.querySelector("#flowNodeLabelInput"),
-  flowEdgeLabelInput: document.querySelector("#flowEdgeLabelInput"),
-  flowNodeTypeSelect: document.querySelector("#flowNodeTypeSelect"),
-  flowNodeFontSizeInput: document.querySelector("#flowNodeFontSizeInput"),
-  flowNodeWidthInput: document.querySelector("#flowNodeWidthInput"),
-  flowNodeHeightInput: document.querySelector("#flowNodeHeightInput"),
-  flowGuideTitle: document.querySelector("#flowGuideTitle"),
-  flowGuideDescription: document.querySelector("#flowGuideDescription"),
-  flowSelectionStatus: document.querySelector("#flowSelectionStatus"),
-  flowConnectStatus: document.querySelector("#flowConnectStatus"),
-  zoomOutFlow: document.querySelector("#zoomOutFlow"),
-  zoomInFlow: document.querySelector("#zoomInFlow"),
-  resetFlowZoom: document.querySelector("#resetFlowZoom"),
-  flowZoomLabel: document.querySelector("#flowZoomLabel"),
-  flowCanvasViewport: document.querySelector("#flowCanvasViewport"),
-  flowCanvas: document.querySelector("#flowCanvas"),
-  flowEdgeLayer: document.querySelector("#flowEdgeLayer"),
-  flowNodeLayer: document.querySelector("#flowNodeLayer"),
-  progressPreview: document.querySelector("#progressPreview"),
-  progressPreviewSummary: document.querySelector("#progressPreviewSummary"),
-  progressPreviewImage: document.querySelector("#progressPreviewImage"),
-  progressPreviewEmpty: document.querySelector("#progressPreviewEmpty"),
-  progressPreviewTitle: document.querySelector("#progressPreviewTitle"),
-  progressPreviewUrl: document.querySelector("#progressPreviewUrl"),
-  guideModal: document.querySelector("#guideModal"),
-  openGuide: document.querySelector("#openGuide"),
-  closeGuide: document.querySelector("#closeGuide"),
-  openScenario: document.querySelector("#openScenario"),
-  openScenarioQa: document.querySelector("#openScenarioQa"),
-  saveScenario: document.querySelector("#saveScenario"),
-  extractScenario: document.querySelector("#extractScenario"),
-  extractorShell: document.querySelector("#extractorShell"),
-  extractorUrl: document.querySelector("#extractorUrl"),
-  extractorWebview: document.querySelector("#extractorWebview"),
-  extractorResizeOverlay: document.querySelector("#extractorResizeOverlay"),
-  toggleExtractorSidebar: document.querySelector("#toggleExtractorSidebar"),
-  extractorScenarioPreview: document.querySelector("#extractorScenarioPreview"),
-  extractorScenarioCount: document.querySelector("#extractorScenarioCount"),
-  saveExtractorScenario: document.querySelector("#saveExtractorScenario"),
-  extractorRecorderTitle: document.querySelector("#extractorRecorderTitle"),
-  extractorRecorderFeature: document.querySelector("#extractorRecorderFeature"),
-  extractorRecorderSuite: document.querySelector("#extractorRecorderSuite"),
-  extractorRecorderTags: document.querySelector("#extractorRecorderTags"),
-  extractorTogglePin: document.querySelector("#extractorTogglePin"),
-  extractorAddPath: document.querySelector("#extractorAddPath"),
-  extractorUndoStep: document.querySelector("#extractorUndoStep"),
-  extractorClearSteps: document.querySelector("#extractorClearSteps"),
-  extractorCommitScenario: document.querySelector("#extractorCommitScenario"),
-  extractorRecorderSteps: document.querySelector("#extractorRecorderSteps"),
-  extractorRecorderCount: document.querySelector("#extractorRecorderCount"),
-  closeExtractor: document.querySelector("#closeExtractor"),
-  runQa: document.querySelector("#runQa"),
-  statusText: document.querySelector("#statusText"),
-  progressPhase: document.querySelector("#progressPhase"),
-  progressPercent: document.querySelector("#progressPercent"),
-  progressFill: document.querySelector("#progressFill"),
-  estimatedTime: document.querySelector("#estimatedTime"),
-  elapsedTime: document.querySelector("#elapsedTime"),
-  cancelQa: document.querySelector("#cancelQa"),
-  totalCount: document.querySelector("#totalCount"),
-  passCount: document.querySelector("#passCount"),
-  failCount: document.querySelector("#failCount"),
-  resultList: document.querySelector("#resultList"),
-  failureExportField: document.querySelector("#failureExportField"),
-  failureExportFormat: document.querySelector("#failureExportFormat"),
-  exportFailures: document.querySelector("#exportFailures"),
-  openReport: document.querySelector("#openReport"),
-  historySummary: document.querySelector("#historySummary"),
-  historyRunCount: document.querySelector("#historyRunCount"),
-  historyPassRate: document.querySelector("#historyPassRate"),
-  historyRegressionCount: document.querySelector("#historyRegressionCount"),
-  historyRecentRuns: document.querySelector("#historyRecentRuns"),
-  historyHotspots: document.querySelector("#historyHotspots"),
-  seasonChips: Array.from(document.querySelectorAll(".season-chip[data-season]")),
-};
+document.body.dataset.platform = navigator.userAgent.includes("Mac") ? "mac" : "default";
 
 let latestReportPath = null;
 let latestRunResult = null;
+let latestRunVideos = [];
 let activeRunId = null;
 let runStartedAt = 0;
 let progressTimer = null;
@@ -136,67 +28,15 @@ let extractorFrameObserver = null;
 let extractorViewportSyncTimer = null;
 let extractorResizeSettledTimer = null;
 let extractorSidebarOpen = false;
+let extractorToolDragState = null;
 let currentPage = "home";
-const urlHistoryStorageKey = "autoqa.baseUrlHistory";
-const maxUrlHistoryItems = 6;
-const themeStorageKey = "autoqa.selectedSeason";
-const seasonThemeMap = { spring: true, summer: true, autumn: true, winter: true };
-const isFlowChartEnabled = false;
-const flowGuides = {
-  start: {
-    title: "시작 도형",
-    description: "사용자 여정이나 테스트 흐름이 시작되는 지점을 표시합니다. 예: 로그인 페이지 진입.",
-  },
-  process: {
-    title: "프로세스 도형",
-    description: "사용자가 수행하거나 시스템이 처리하는 실제 행동을 적습니다. 예: 이메일 입력, 저장 버튼 클릭.",
-  },
-  decision: {
-    title: "판단 도형",
-    description: "성공/실패, 예/아니오처럼 갈림길이 생길 때 사용합니다. 연결선 순서대로 예, 아니오가 붙습니다.",
-  },
-  end: {
-    title: "종료 도형",
-    description: "테스트 시나리오가 끝나는 지점을 나타냅니다. 예: 대시보드 진입 완료.",
-  },
-  input: {
-    title: "입력 / 출력 도형",
-    description: "사용자 입력이나 시스템 출력, API 응답처럼 데이터가 드나드는 지점을 표현합니다.",
-  },
-  document: {
-    title: "문서 도형",
-    description: "리포트, 이메일, 영수증, 다운로드 파일처럼 문서 단위를 다룰 때 사용합니다.",
-  },
-  manualInput: {
-    title: "수동 입력 도형",
-    description: "사람이 직접 값을 입력해야 하는 단계에 적합합니다. 예: OTP 입력, 고객 정보 기입.",
-  },
-  predefinedProcess: {
-    title: "사전정의 프로세스 도형",
-    description: "다른 곳에서 이미 정의된 하위 시나리오나 공통 모듈을 호출할 때 사용합니다.",
-  },
-  database: {
-    title: "데이터베이스 도형",
-    description: "데이터 저장, 조회, 캐시 적재처럼 저장소와의 상호작용을 표현합니다.",
-  },
-  preparation: {
-    title: "준비 도형",
-    description: "본격적인 행동 전에 필요한 세팅, 초기화, 조건 맞춤 단계를 표시합니다.",
-  },
-};
-const flowGridUnit = 24;
-const flowShapeTemplates = {
-  start: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "시작", defaultColor: "#2fbf89" },
-  end: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "종료", defaultColor: "#2fbf89" },
-  process: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "When 동작을 입력", defaultColor: "#2f6fe4" },
-  decision: { width: flowGridUnit * 5, height: flowGridUnit * 5, label: "조건 확인", defaultColor: "#5a43c3" },
-  input: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "입력 / 출력", defaultColor: "#c38b1f" },
-  document: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "문서 처리", defaultColor: "#8e98ac" },
-  manualInput: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "수동 입력", defaultColor: "#5e55d8" },
-  predefinedProcess: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "공통 프로세스", defaultColor: "#34767f" },
-  database: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "데이터 저장", defaultColor: "#2b7a61" },
-  preparation: { width: flowGridUnit * 10, height: flowGridUnit * 5, label: "준비 단계", defaultColor: "#2f8f5e" },
-};
+let qaScenarioCatalog = [];
+let qaVisibleScenarioCatalog = [];
+let qaSelectedScenarioIndex = 0;
+let qaScenarioFilterKeyword = "";
+let qaUiState = "configure";
+let qaRunLogs = [];
+let qaLastProgressTitle = "";
 const flowBuilder = {
   gridSize: flowGridUnit,
   width: 1680,
@@ -210,7 +50,7 @@ const flowBuilder = {
   nextNodeId: 1,
   nextEdgeId: 1,
   zoom: 1,
-  selectedColor: "#3393ea",
+  selectedColor: "#0066cc",
 };
 let flowDragState = null;
 
@@ -226,14 +66,6 @@ function getFlowNodeMinHeight(type) {
   return type === "decision" ? flowGridUnit * 4 : flowGridUnit * 3;
 }
 
-initializeGuide();
-renderUrlHistory();
-syncPreviewVisibility();
-refreshHistory();
-initializeSeasonTheme();
-initializeFlowBuilder();
-setPage("home");
-
 window.autoqa.onProgress((progress) => {
   if (progress.runId !== activeRunId) return;
   latestProgress = progress;
@@ -247,7 +79,7 @@ window.autoqa.onScenarioExtracted((payload) => {
     ? `${current}\n\n${payload.markdown.trim()}\n`
     : `${payload.markdown.trim()}\n`;
   setSharedScenarioText(nextValue);
-  elements.scenarioFile.textContent = "시나리오 추출 결과가 추가됨";
+  setScenarioStatus("시나리오 추출 결과가 추가됨");
   renderExtractorScenarioPreview();
 });
 
@@ -259,22 +91,59 @@ window.autoqa.onAppUpdateState((state) => {
   renderAppUpdateState(state);
 });
 
-elements.navScenarioPage.addEventListener("click", () => setPage("scenario"));
-elements.navFlowPage.addEventListener("click", () => setPage("flow"));
-elements.navQaPage.addEventListener("click", () => setPage("qa"));
-elements.homeBrand.addEventListener("click", () => setPage("home"));
-elements.homeScenarioCta.addEventListener("click", () => setPage("scenario"));
-elements.homeQaCta.addEventListener("click", () => setPage("qa"));
-elements.seasonChips.forEach((button) => {
-  button.addEventListener("click", () => {
-    applySeasonTheme(button.dataset.season);
-  });
+window.addEventListener("unhandledrejection", (event) => {
+  const message = event.reason?.message || String(event.reason || "알 수 없는 오류");
+  setScenarioStatus(message);
+  elements.statusText.textContent = "실패";
 });
 
+elements.navScenarioPage.addEventListener("click", () => setPage("scenario"));
+elements.navQaPage.addEventListener("click", () => setPage("qa"));
+elements.qaSidebarHome?.addEventListener("click", () => setPage("home"));
+elements.qaSidebarScenario?.addEventListener("click", () => setPage("scenario"));
+elements.qaSidebarExecution?.addEventListener("click", () => setPage("qa"));
+elements.navScenarioInline?.addEventListener("click", () => setPage("scenario"));
+elements.homeBrand?.addEventListener("click", () => setPage("home"));
+elements.scenarioGoHome?.addEventListener("click", () => setPage("home"));
+elements.scenarioGoQa?.addEventListener("click", () => setPage("qa"));
+elements.homeScenarioCta?.addEventListener("click", () => setPage("scenario"));
+elements.homeQaCta?.addEventListener("click", () => setPage("qa"));
+elements.homePromptForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  handleHomePromptSubmit(elements.homePromptInput?.value || "");
+});
+elements.homePromptSubmit?.addEventListener("click", () => {
+  handleHomePromptSubmit(elements.homePromptInput?.value || "");
+});
+elements.homePromptInput?.addEventListener("input", () => {
+  handleHomePromptInputChange(elements.homePromptInput.value);
+});
+elements.homePromptInput?.addEventListener("focus", () => {
+  handleHomePromptInputChange(elements.homePromptInput.value);
+});
+elements.homePromptInput?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  handleHomePromptSubmit(elements.homePromptInput.value);
+});
+elements.homePromptShortcutButtons?.forEach((button) => {
+  button.addEventListener("click", () => {
+    const value = button.dataset.homePromptValue || "";
+    if (elements.homePromptInput) {
+      elements.homePromptInput.value = value;
+    }
+    handleHomePromptSubmit(value);
+  });
+});
 elements.openScenario.addEventListener("click", openScenarioIntoEditors);
 elements.openScenarioQa.addEventListener("click", openScenarioIntoEditors);
 elements.saveScenario.addEventListener("click", saveCurrentScenario);
 elements.saveExtractorScenario.addEventListener("click", saveCurrentScenario);
+elements.scenarioReset?.addEventListener("click", () => {
+  setSharedScenarioText("");
+  renderExtractorScenarioPreview();
+  setScenarioStatus("시나리오를 초기화했습니다.");
+});
 
 elements.toggleUrlHistory.addEventListener("click", () => {
   const isOpen = !elements.urlHistoryMenu.classList.contains("hidden");
@@ -310,9 +179,45 @@ elements.scenarioBaseUrl.addEventListener("input", () => {
 
 elements.qaBaseUrl.addEventListener("input", () => {
   elements.scenarioBaseUrl.value = elements.qaBaseUrl.value;
+  elements.qaPreviewLocation.textContent = `${elements.qaBaseUrl.value || "https://example.com"}/login`;
+  syncQaExecutionSummary();
 });
 
-elements.headless.addEventListener("change", syncPreviewVisibility);
+elements.headless.addEventListener("change", () => {
+  syncPreviewVisibility();
+  syncQaExecutionSummary();
+});
+elements.failFast.addEventListener("change", syncQaExecutionSummary);
+elements.workers.addEventListener("input", () => {
+  syncQaExecutionSummary();
+  renderQaWorkerCards();
+});
+elements.browserSelect.addEventListener("change", syncQaExecutionSummary);
+elements.qaRunAgain?.addEventListener("click", () => {
+  elements.runQa.click();
+});
+elements.qaBackToConfigure?.addEventListener("click", () => {
+  setQaVisualState("configure");
+  elements.statusText.textContent = "대기 중";
+  elements.qaSidebarStatusMeta.textContent = "실행 구성을 다시 조정할 수 있습니다.";
+});
+elements.qaDownloadVideos?.addEventListener("click", async () => {
+  if (!latestRunResult || !latestRunVideos.length) return;
+  elements.qaDownloadVideos.disabled = true;
+  try {
+    const saved = await window.autoqa.downloadRunVideos({
+      summary: latestRunResult.summary,
+      videos: latestRunVideos,
+    });
+    if (saved?.directoryPath) {
+      elements.statusText.textContent = `동영상 저장 완료 (${saved.count}개)`;
+    }
+  } catch (error) {
+    elements.statusText.textContent = error.message || "동영상 저장 실패";
+  } finally {
+    elements.qaDownloadVideos.disabled = false;
+  }
+});
 
 elements.checkForUpdates.addEventListener("click", async () => {
   elements.checkForUpdates.disabled = true;
@@ -335,94 +240,50 @@ elements.scenarioText.addEventListener("input", () => {
 
 elements.qaScenarioText.addEventListener("input", () => {
   syncScenarioEditors(elements.qaScenarioText, elements.scenarioText);
+  renderQaScenarioCatalog();
 });
-
-elements.openGuide.addEventListener("click", () => setGuideOpen(true));
-elements.closeGuide.addEventListener("click", dismissGuide);
-elements.guideModal.addEventListener("click", (event) => {
-  if (event.target === elements.guideModal) dismissGuide();
+elements.qaScenarioFilter?.addEventListener("input", () => {
+  qaScenarioFilterKeyword = String(elements.qaScenarioFilter.value || "").trim().toLowerCase();
+  renderQaScenarioCatalog();
+});
+elements.commandPaletteInput?.addEventListener("input", () => {
+  renderCommandPalette(elements.commandPaletteInput.value);
 });
 
 document.addEventListener("click", (event) => {
   if (event.target.closest(".url-field")) return;
+  if (!event.target.closest(".home-minimal-form")) {
+    setHomeCommandMenuOpen(false);
+  }
   setUrlHistoryOpen(false, "all");
 });
 
-elements.toggleScenarioAccordion.addEventListener("click", () => {
-  setScenarioAccordionOpen(
-    !elements.scenarioAccordion.classList.contains("open"),
-  );
+document.addEventListener("keydown", (event) => {
+  const isPaletteShortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k";
+  if (isPaletteShortcut) {
+    event.preventDefault();
+    setCommandPaletteOpen(!elements.commandPalette || elements.commandPalette.classList.contains("hidden"));
+    return;
+  }
+  if (event.key === "Escape" && elements.commandPalette && !elements.commandPalette.classList.contains("hidden")) {
+    setCommandPaletteOpen(false);
+  }
 });
-elements.flowShapeType.addEventListener("change", () => {
-  setFlowTool(elements.flowShapeType.value);
+
+elements.commandPalette?.addEventListener("click", (event) => {
+  if (event.target === elements.commandPalette) {
+    setCommandPaletteOpen(false);
+  }
 });
-elements.flowShapeCards.forEach((button) => {
-  button.addEventListener("click", () => {
-    setFlowTool(button.dataset.flowShapeCard);
+elements.commandPalette?.addEventListener("focusout", () => {
+  window.requestAnimationFrame(() => {
+    if (!elements.commandPalette?.contains(document.activeElement)) {
+      setCommandPaletteOpen(false);
+    }
   });
 });
-elements.addFlowNode.addEventListener("click", () => {
-  addFlowNodeAtViewportCenter();
-});
-elements.deleteFlowSelection.addEventListener("click", () => {
-  deleteSelectedFlowSelection();
-});
-elements.closeFlowDrawer.addEventListener("click", () => {
-  flowBuilder.selectedNodeId = null;
-  flowBuilder.selectedEdgeId = null;
-  renderFlowBuilder();
-});
-elements.clearFlowChart.addEventListener("click", () => {
-  resetFlowBuilder();
-});
-elements.flowColorSwatches.forEach((button) => {
-  button.addEventListener("click", () => {
-    selectFlowColor(button.dataset.flowColor);
-  });
-});
-elements.flowCustomColor.addEventListener("input", () => {
-  selectFlowColor(elements.flowCustomColor.value, false);
-});
-elements.applyFlowColor.addEventListener("click", () => {
-  applySelectedFlowColor();
-});
-elements.flowNodeLabelInput.addEventListener("input", () => {
-  updateSelectedFlowNodeLabel(elements.flowNodeLabelInput.value);
-});
-elements.flowEdgeLabelInput.addEventListener("input", () => {
-  updateSelectedFlowEdgeLabel(elements.flowEdgeLabelInput.value);
-});
-elements.flowNodeTypeSelect.addEventListener("change", () => {
-  updateSelectedFlowNodeType(elements.flowNodeTypeSelect.value);
-});
-elements.flowNodeFontSizeInput.addEventListener("input", () => {
-  updateSelectedFlowNodeFontSize(elements.flowNodeFontSizeInput.value);
-});
-elements.flowNodeWidthInput.addEventListener("input", () => {
-  updateSelectedFlowNodeSize(elements.flowNodeWidthInput.value, null);
-});
-elements.flowNodeHeightInput.addEventListener("input", () => {
-  updateSelectedFlowNodeSize(null, elements.flowNodeHeightInput.value);
-});
-elements.zoomOutFlow.addEventListener("click", () => {
-  setFlowZoom(flowBuilder.zoom - 0.1);
-});
-elements.zoomInFlow.addEventListener("click", () => {
-  setFlowZoom(flowBuilder.zoom + 0.1);
-});
-elements.resetFlowZoom.addEventListener("click", () => {
-  setFlowZoom(1);
-});
-elements.buildFlowFromScenario.addEventListener("click", () => {
-  buildFlowChartFromScenarioText(elements.scenarioText.value);
-});
-elements.generateScenarioFromFlow.addEventListener("click", () => {
-  const generated = generateScenarioFromFlowChart();
-  if (!generated) return;
-  setSharedScenarioText(generated);
-  renderExtractorScenarioPreview();
-  elements.scenarioFile.textContent = "Flow Chart에서 시나리오를 생성했습니다.";
-});
+
+window.addEventListener("resize", updateDesktopTier);
 
 elements.extractorTogglePin.addEventListener("click", () => {
   sendExtractorRecorderCommand("toggleCapture");
@@ -447,17 +308,37 @@ elements.extractorCommitScenario.addEventListener("click", () => {
 elements.toggleExtractorSidebar.addEventListener("click", () => {
   toggleExtractorSidebar();
 });
-
-elements.extractScenario.addEventListener("click", async () => {
-  const config = await window.autoqa.openScenarioExtractor({
-    baseUrl: elements.scenarioBaseUrl.value,
-  });
-  openEmbeddedExtractor(config);
+elements.closeExtractorSidebar.addEventListener("click", () => {
+  setExtractorSidebarOpen(false);
 });
 
-elements.closeExtractor.addEventListener("click", closeEmbeddedExtractor);
+elements.extractScenario.addEventListener("click", async () => {
+  const previousPage = currentPage;
+  const baseUrl = normalizeUrlInput(elements.scenarioBaseUrl.value);
+  if (!baseUrl) {
+    setScenarioStatus("시나리오 추출 대상 URL을 입력하세요.");
+    elements.scenarioBaseUrl.focus();
+    return;
+  }
+  try {
+    setScenarioStatus("시나리오 추출 화면을 여는 중...");
+    const config = await window.autoqa.openScenarioExtractor({
+      baseUrl,
+    });
+    openExtractorRoutePending();
+    openEmbeddedExtractor(config);
+    setScenarioStatus("시나리오 추출 화면이 열렸습니다.");
+  } catch (error) {
+    if (currentPage === "extractor") {
+      setPage(previousPage === "extractor" ? "scenario" : previousPage);
+    }
+    setScenarioStatus(error.message || "시나리오 추출 화면을 열지 못했습니다.");
+  }
+});
+
+elements.closeExtractor.addEventListener("click", () => setPage("scenario"));
 elements.extractorShell.addEventListener("click", (event) => {
-  if (!isExtractorCompactLayout() || !extractorSidebarOpen) return;
+  if (!extractorSidebarOpen) return;
   if (event.target.closest(".extractor-sidebar")) return;
   if (event.target.closest("#toggleExtractorSidebar")) return;
   setExtractorSidebarOpen(false);
@@ -470,6 +351,10 @@ elements.runQa.addEventListener("click", async () => {
     elements.qaScenarioText.value,
   );
   const previewEnabled = elements.headless.checked;
+  qaLastProgressTitle = "";
+  clearQaLogs();
+  appendQaLog("실행을 준비하는 중입니다.", "info");
+  setQaVisualState("running");
   setRunning(true);
   renderResults([]);
   renderRunCounts({ total: scenarioTotal, passed: 0, failed: 0 });
@@ -478,7 +363,9 @@ elements.runQa.addEventListener("click", async () => {
   startProgressTicker();
   latestReportPath = null;
   latestRunResult = null;
+  latestRunVideos = [];
   elements.openReport.classList.add("hidden");
+  elements.qaDownloadVideos.classList.add("hidden");
   elements.exportFailures.classList.add("hidden");
   elements.failureExportField.classList.add("hidden");
 
@@ -488,38 +375,54 @@ elements.runQa.addEventListener("click", async () => {
       runId: activeRunId,
       baseUrl: elements.qaBaseUrl.value,
       scenarioText: elements.qaScenarioText.value,
+      browserId: elements.browserSelect.value,
       workers: Number(elements.workers.value) || 1,
       headless: elements.headless.checked,
       failFast: elements.failFast.checked,
     });
 
     elements.statusText.textContent = "완료";
+    elements.qaSidebarStatusMeta.textContent = "실행이 정상적으로 완료되었습니다.";
     renderRunCounts({
       total: result.summary.scenarioTotal ?? result.summary.total,
       passed: result.summary.scenarioPassed ?? result.summary.passed,
       failed: result.summary.scenarioFailed ?? result.summary.failed,
     });
     renderResults(result.results);
+    syncQaCompletionSummary(result);
     latestRunResult = result;
+    latestRunVideos = Array.isArray(result.reports?.videos) ? result.reports.videos : [];
     latestReportPath = result.reports.htmlPath;
     elements.openReport.classList.remove("hidden");
+    syncRunVideoControls(result);
     syncFailureExportControls(result);
     refreshHistory();
+    appendQaLog("실행이 완료되었습니다.", "success");
+    setQaVisualState("complete");
   } catch (error) {
+    const errorMessage = normalizeRunError(error.message);
     const cancelled = error.message.includes("취소");
     elements.statusText.textContent = cancelled ? "취소됨" : "실패";
+    elements.qaSidebarStatusMeta.textContent = cancelled
+      ? "사용자 요청으로 실행이 중단되었습니다."
+      : "실행 중 오류가 발생했습니다.";
     renderResults([
       {
         title: cancelled
           ? "QA 실행이 취소되었습니다"
           : "실행을 완료하지 못했습니다",
         status: cancelled ? "skipped" : "failed",
-        error: error.message,
+        error: errorMessage,
         durationMs: 0,
       },
     ]);
+    syncQaCompletionSummary(null, { cancelled, error: { ...error, message: errorMessage } });
     latestRunResult = null;
+    latestRunVideos = [];
+    syncRunVideoControls(null);
     syncFailureExportControls(null);
+    appendQaLog(cancelled ? "실행이 취소되었습니다." : `실행 실패: ${errorMessage}`, "error");
+    setQaVisualState("complete");
   } finally {
     stopProgressTicker();
     setRunning(false);
@@ -527,6 +430,30 @@ elements.runQa.addEventListener("click", async () => {
     runStartedAt = 0;
   }
 });
+
+async function hydrateBrowserOptions() {
+  try {
+    const browserPayload = await window.autoqa.listBrowsers();
+    const items = Array.isArray(browserPayload?.items) ? browserPayload.items : [];
+    if (!items.length) return;
+
+    const selected = elements.browserSelect.value || browserPayload.defaultBrowserId || "chromium";
+    elements.browserSelect.innerHTML = "";
+    for (const item of items) {
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = item.label;
+      elements.browserSelect.append(option);
+    }
+    elements.browserSelect.value = items.some((item) => item.id === selected)
+      ? selected
+      : (browserPayload.defaultBrowserId || items[0].id);
+    syncQaExecutionSummary();
+  } catch {
+    elements.browserSelect.value = "chromium";
+    syncQaExecutionSummary();
+  }
+}
 
 elements.cancelQa.addEventListener("click", async () => {
   if (!activeRunId) return;
@@ -558,16 +485,52 @@ elements.exportFailures.addEventListener("click", async () => {
   }
 });
 
+initializeWorkspace();
+
+function initializeWorkspace() {
+  setPage("home");
+
+  const startupTasks = [
+    () => renderUrlHistory(),
+    () => syncPreviewVisibility(),
+    () => refreshHistory(),
+    () => initializeExtractorFloatingTool(),
+    () => updateDesktopTier(),
+    () => hydrateBrowserOptions(),
+    () => renderQaScenarioCatalog(),
+    () => setQaVisualState("configure"),
+    () => syncQaExecutionSummary(),
+    () => renderQaWorkerCards(),
+  ];
+
+  startupTasks.forEach((task) => {
+    try {
+      task();
+    } catch (error) {
+      reportStartupError(error);
+    }
+  });
+}
+
+function reportStartupError(error) {
+  const message = error?.message || "초기화 중 오류가 발생했습니다.";
+  console.error(error);
+  setHomePromptHint(`초기화 오류: ${message}`, true);
+  setScenarioStatus(message);
+}
+
 function setPage(page) {
-  if (page === "flow" && !isFlowChartEnabled) {
-    page = "scenario";
+  if (page === "flow") page = "scenario";
+  if (currentPage === "extractor" && page !== "extractor") {
+    teardownExtractorRoute();
   }
   currentPage = page;
+  document.body.dataset.page = page;
   const pages = {
     home: elements.homePage,
     scenario: elements.scenarioPage,
-    flow: elements.flowPage,
     qa: elements.qaPage,
+    extractor: elements.extractorPage,
   };
 
   Object.entries(pages).forEach(([key, node]) => {
@@ -575,36 +538,230 @@ function setPage(page) {
   });
 
   elements.navScenarioPage.classList.toggle("active", page === "scenario");
-  elements.navFlowPage.classList.toggle("active", page === "flow");
   elements.navQaPage.classList.toggle("active", page === "qa");
+  elements.qaSidebarHome?.classList.toggle("active", page === "home");
+  elements.qaSidebarScenario?.classList.toggle("active", page === "scenario");
+  elements.qaSidebarExecution?.classList.toggle("active", page === "qa");
+  renderCommandPalette(elements.commandPaletteInput?.value || "");
 }
 
-function initializeSeasonTheme() {
-  const savedSeason = window.localStorage.getItem(themeStorageKey) || "spring";
-  applySeasonTheme(savedSeason);
+function handleHomePromptSubmit(rawValue) {
+  const value = String(rawValue || "").trim();
+  setHomeCommandMenuOpen(false);
+  if (!value) {
+    setHomePromptHint("명령어나 URL을 입력하세요.", true);
+    elements.homePromptInput?.focus();
+    return;
+  }
+
+  const handled = runHomePromptCommand(value);
+  if (handled) {
+    return;
+  }
+
+  const normalizedUrl = normalizeHomePromptUrl(value);
+  if (normalizedUrl) {
+    saveBaseUrlHistory(normalizedUrl);
+    elements.scenarioBaseUrl.value = normalizedUrl;
+    elements.qaBaseUrl.value = normalizedUrl;
+    setScenarioStatus(`대상 URL이 설정되었습니다: ${normalizedUrl}`);
+    setPage("scenario");
+    setHomePromptHint("URL을 시나리오 작성 화면으로 전달했습니다.", false);
+    window.requestAnimationFrame(() => {
+      elements.scenarioBaseUrl.focus();
+    });
+    return;
+  }
+
+  if (value.startsWith("/") || shouldSuggestHomePromptCommands(getHomePromptCommands(), value)) {
+    renderHomeCommandMenu(value);
+    setHomePromptHint("알 수 없는 명령입니다. `/시나리오`, `/실행`을 사용하세요.", true);
+    return;
+  }
+
+  setHomePromptHint("지원하지 않는 입력입니다. 명령어나 URL을 확인하세요.", true);
 }
 
-function initializeFlowBuilder() {
-  if (!isFlowChartEnabled) return;
-  renderFlowGuide();
-  selectFlowColor(flowBuilder.selectedColor);
-  setFlowTool(elements.flowShapeType.value || "process");
-  renderFlowBuilder();
-  elements.flowNodeLayer.addEventListener("pointerdown", handleFlowNodePointerDown);
-  elements.flowNodeLayer.addEventListener("dblclick", handleFlowNodeDoubleClick);
-  elements.flowCanvasViewport.addEventListener("pointerdown", handleFlowCanvasPointerDown);
-  elements.flowEdgeLayer.addEventListener("click", handleFlowEdgeClick);
-  window.addEventListener("pointermove", handleFlowPointerMove);
-  window.addEventListener("pointerup", stopFlowDrag);
+function runHomePromptCommand(rawCommand) {
+  const matched = resolveHomePromptCommand(getHomePromptCommands(), rawCommand);
+  if (!matched) {
+    return false;
+  }
+  matched.run();
+  setHomeCommandMenuOpen(false);
+  setHomePromptHint(`명령을 실행했습니다: ${rawCommand}`, false);
+  return true;
 }
 
-function applySeasonTheme(season) {
-  const nextSeason = seasonThemeMap[season] ? season : "spring";
-  document.body.dataset.season = nextSeason;
-  window.localStorage.setItem(themeStorageKey, nextSeason);
-  elements.seasonChips.forEach((button) => {
-    button.classList.toggle("active", button.dataset.season === nextSeason);
+function handleHomePromptInputChange(rawValue) {
+  const commands = getHomePromptCommands();
+  const matchedUrls = getFilteredHomePromptUrls(loadUrlHistory(), rawValue);
+  if (!shouldSuggestHomePromptCommands(commands, rawValue) && !matchedUrls.length) {
+    setHomeCommandMenuOpen(false);
+    return;
+  }
+  renderHomeCommandMenu(rawValue, matchedUrls);
+}
+
+function getHomePromptCommands() {
+  return [
+    {
+      id: "home-command-scenario",
+      command: "/시나리오",
+      aliases: ["/scenario", "/추출", "/extract", "시나리오", "scenario", "추출", "extract"],
+      title: "시나리오 워크스페이스",
+      description: "시나리오 작성과 URL 추출 화면으로 이동합니다.",
+      keywords: ["시나리오", "추출", "편집", "scenario", "extract"],
+      run: () => setPage("scenario"),
+    },
+    {
+      id: "home-command-run",
+      command: "/실행",
+      aliases: ["/qa", "/run", "실행", "qa", "run"],
+      title: "실행 콘솔",
+      description: "현재 시나리오 기준으로 QA 실행 화면으로 이동합니다.",
+      keywords: ["실행", "qa", "run", "console"],
+      run: () => setPage("qa"),
+    },
+    {
+      id: "home-command-home",
+      command: "/홈",
+      aliases: ["/home", "홈", "home"],
+      title: "메인 화면",
+      description: "현재 메인 화면 상태로 다시 돌아옵니다.",
+      keywords: ["홈", "메인", "home"],
+      run: () => setPage("home"),
+    },
+    {
+      id: "home-command-palette",
+      command: "/명령",
+      aliases: ["/command", "명령", "command"],
+      title: "전체 명령 팔레트",
+      description: "추가 명령 검색 패널을 엽니다.",
+      keywords: ["명령", "팔레트", "command", "palette"],
+      run: () => setCommandPaletteOpen(true),
+    },
+  ];
+}
+
+function renderHomeCommandMenu(rawValue, matchedUrls = getFilteredHomePromptUrls(loadUrlHistory(), rawValue)) {
+  if (!elements.homeCommandMenu || !elements.homeCommandList) return;
+  const commands = getFilteredHomePromptCommands(getHomePromptCommands(), rawValue);
+  const shouldShowCommands = shouldSuggestHomePromptCommands(getHomePromptCommands(), rawValue);
+
+  if (!shouldShowCommands && !matchedUrls.length) {
+    elements.homeCommandList.innerHTML = `
+      <div class="home-command-empty">
+        <strong>일치하는 항목이 없습니다.</strong>
+        <span>다른 키워드나 URL 일부를 다시 입력해보세요.</span>
+      </div>
+    `;
+    setHomeCommandMenuOpen(true);
+    return;
+  }
+
+  const sections = [];
+
+  if (shouldShowCommands && commands.length) {
+    sections.push(`
+      <div class="home-command-section">
+        <p class="home-command-section-label">명령</p>
+        ${commands
+    .map((command) => `
+          <button class="home-command-item" type="button" data-home-command-id="${command.id}">
+            <div class="home-command-item-main">
+              <strong>${escapeHtml(command.command)}</strong>
+              <span>${escapeHtml(command.title)}</span>
+            </div>
+            <p>${escapeHtml(command.description)}</p>
+          </button>
+        `)
+    .join("")}
+      </div>
+    `);
+  }
+
+  if (matchedUrls.length) {
+    sections.push(`
+      <div class="home-command-section">
+        <p class="home-command-section-label">최근 URL</p>
+        ${matchedUrls
+    .map((item, index) => `
+          <button class="home-command-item home-command-item-url" type="button" data-home-history-index="${index}">
+            <div class="home-command-item-main">
+              <strong>${escapeHtml(item.url)}</strong>
+              <span>최근 입력한 URL</span>
+            </div>
+            <p>${escapeHtml(formatHistoryDate(item.savedAt))}에 저장됨</p>
+          </button>
+        `)
+    .join("")}
+      </div>
+    `);
+  }
+
+  elements.homeCommandList.innerHTML = sections.join("");
+
+  elements.homeCommandList.querySelectorAll("[data-home-command-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const selected = commands.find((command) => command.id === button.dataset.homeCommandId);
+      if (!selected) return;
+      if (elements.homePromptInput) {
+        elements.homePromptInput.value = selected.command;
+      }
+      selected.run();
+      setHomeCommandMenuOpen(false);
+      setHomePromptHint(`명령을 실행했습니다: ${selected.command}`, false);
+    });
   });
+
+  elements.homeCommandList.querySelectorAll("[data-home-history-index]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const selected = matchedUrls[Number(button.dataset.homeHistoryIndex)];
+      if (!selected?.url) return;
+      if (elements.homePromptInput) {
+        elements.homePromptInput.value = selected.url;
+      }
+      elements.scenarioBaseUrl.value = selected.url;
+      elements.qaBaseUrl.value = selected.url;
+      setHomeCommandMenuOpen(false);
+      setScenarioStatus(`대상 URL이 설정되었습니다: ${selected.url}`);
+      setHomePromptHint("이전 URL 기록을 불러왔습니다.", false);
+      setPage("scenario");
+      window.requestAnimationFrame(() => {
+        elements.scenarioBaseUrl.focus();
+      });
+    });
+  });
+
+  setHomeCommandMenuOpen(true);
+}
+
+function setHomeCommandMenuOpen(isOpen) {
+  if (!elements.homeCommandMenu) return;
+  elements.homeCommandMenu.classList.toggle("hidden", !isOpen);
+}
+
+function setHomePromptHint(message, isError) {
+  if (!elements.homePromptHint) return;
+  elements.homePromptHint.classList.remove("hidden");
+  elements.homePromptHint.textContent = message;
+  elements.homePromptHint.dataset.state = isError ? "error" : "idle";
+}
+
+function updateDesktopTier() {
+  const width = window.innerWidth;
+  let tier = "compact";
+  if (width >= 2560) {
+    tier = "ultrawide";
+  } else if (width >= 1920) {
+    tier = "expanded";
+  } else if (width >= 1600) {
+    tier = "standard-plus";
+  } else if (width >= 1440) {
+    tier = "standard";
+  }
+  document.body.dataset.desktopTier = tier;
 }
 
 function setFlowTool(tool) {
@@ -1351,18 +1508,28 @@ function syncScenarioEditors(source, target) {
 function setSharedScenarioText(value) {
   elements.scenarioText.value = value;
   elements.qaScenarioText.value = value;
+  renderQaScenarioCatalog();
 }
 
 async function openScenarioIntoEditors() {
-  const file = await window.autoqa.openScenario();
-  if (!file) return;
-  setSharedScenarioText(file.content);
-  elements.scenarioFile.textContent = file.filePath;
-  renderExtractorScenarioPreview();
+  try {
+    setScenarioStatus("시나리오 파일을 불러오는 중...");
+    const file = await window.autoqa.openScenario();
+    if (!file) {
+      setScenarioStatus("시나리오 파일 선택이 취소되었습니다.");
+      return;
+    }
+    setSharedScenarioText(file.content);
+    setScenarioStatus(file.filePath);
+    renderExtractorScenarioPreview();
+  } catch (error) {
+    setScenarioStatus(error.message || "시나리오 파일을 불러오지 못했습니다.");
+  }
 }
 
 function setRunning(isRunning) {
   elements.runQa.disabled = isRunning;
+  elements.qaRunAgain.disabled = isRunning;
   elements.openScenarioQa.disabled = isRunning;
   elements.extractScenario.disabled = isRunning;
   elements.cancelQa.disabled = false;
@@ -1370,26 +1537,155 @@ function setRunning(isRunning) {
   elements.statusText.textContent = isRunning
     ? "실행 중"
     : elements.statusText.textContent;
+  elements.qaSidebarStatusMeta.textContent = isRunning
+    ? "진행 상황을 실시간으로 반영하고 있습니다."
+    : elements.qaSidebarStatusMeta.textContent;
+  elements.qaResultBadge.textContent = isRunning ? "running" : elements.qaResultBadge.textContent;
+}
+
+function setQaVisualState(state) {
+  qaUiState = state;
+  elements.qaStateConfigure.classList.toggle("hidden", state !== "configure");
+  elements.qaStateRunning.classList.toggle("hidden", state !== "running");
+  elements.qaStateComplete.classList.toggle("hidden", state !== "complete");
+  elements.qaStageModeLabel.textContent = {
+    configure: "실행 구성",
+    running: "실행 모니터링",
+    complete: "실행 완료",
+  }[state] || "실행";
+}
+
+function syncQaExecutionSummary() {
+  const totalSteps = qaScenarioCatalog.reduce((sum, item) => sum + item.steps.length, 0);
+  const selected = qaScenarioCatalog.find((item) => item.index === qaSelectedScenarioIndex);
+  const browserLabel = elements.browserSelect.options[elements.browserSelect.selectedIndex]?.textContent || "Chromium";
+  const workers = Math.max(1, Number(elements.workers.value) || 1);
+  elements.qaSummaryStepCount.textContent = String(totalSteps);
+  elements.qaSummaryBrowser.textContent = browserLabel.replace(/\s*\(.+\)$/, "");
+  elements.qaSummaryWorkers.textContent = String(workers);
+  if (qaUiState === "configure") {
+    elements.estimatedTime.textContent = totalSteps ? `${Math.max(1, Math.ceil(totalSteps * 4 / 60))}분` : "-";
+  }
+  elements.qaPreviewLocation.textContent = getQaDisplayBaseUrl();
+  renderQaSelectedTags(selected);
+}
+
+function getQaDisplayBaseUrl() {
+  return normalizeUrlInput(elements.qaBaseUrl.value) || "https://example.com";
+}
+
+function renderQaSelectedTags(selected) {
+  const tags = selected?.tags?.length ? selected.tags : [];
+  elements.qaSelectedTags.innerHTML = tags.length
+    ? tags.map((tag) => `<span class="qa-tag">${escapeHtml(tag)}</span>`).join("")
+    : `<span class="qa-tag-empty">선택된 태그가 없습니다.</span>`;
+}
+
+function renderQaWorkerCards(progress = latestProgress) {
+  const workerCount = Math.max(1, Math.min(Number(elements.workers.value) || 1, 4));
+  const items = qaVisibleScenarioCatalog.length ? qaVisibleScenarioCatalog : qaScenarioCatalog;
+  const completed = Number(progress?.scenarioCompleted) || 0;
+  const runningIndex = Math.min(completed, Math.max(items.length - 1, 0));
+  elements.qaWorkerGrid.innerHTML = Array.from({ length: workerCount }, (_, index) => {
+    const scenario = items[index] || items[runningIndex] || null;
+    const title = scenario?.title || `대기 워커 ${index + 1}`;
+    const tone = qaUiState === "complete"
+      ? "done"
+      : qaUiState === "running" && index === (runningIndex % workerCount)
+        ? "running"
+        : "idle";
+    const status = tone === "done" ? "완료" : tone === "running" ? "실행 중" : "대기";
+    return `
+      <article class="qa-worker-card qa-worker-card-${tone}">
+        <span>워커 ${index + 1}</span>
+        <strong>${escapeHtml(title)}</strong>
+        <p>${status}</p>
+      </article>
+    `;
+  }).join("");
+}
+
+function clearQaLogs() {
+  qaRunLogs = [];
+  renderQaLogs();
+}
+
+function appendQaLog(message, tone = "info") {
+  const text = String(message || "").trim();
+  if (!text) return;
+  if (qaRunLogs.at(-1)?.message === text) return;
+  qaRunLogs.push({
+    time: new Intl.DateTimeFormat("ko-KR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(new Date()),
+    message: text,
+    tone,
+  });
+  qaRunLogs = qaRunLogs.slice(-40);
+  renderQaLogs();
+}
+
+function renderQaLogs() {
+  const markup = qaRunLogs.length
+    ? qaRunLogs.map((item) => `
+      <div class="qa-log-entry qa-log-entry-${item.tone}">
+        <span>[${item.time}]</span>
+        <strong>${escapeHtml(item.message)}</strong>
+      </div>
+    `).join("")
+    : `<div class="qa-log-entry"><span>[--:--:--]</span><strong>아직 실행 로그가 없습니다.</strong></div>`;
+  elements.qaLiveLog.innerHTML = markup;
+  elements.qaCompleteLog.innerHTML = markup;
+}
+
+function syncQaCompletionSummary(result, fallback = null) {
+  const summary = result?.summary;
+  const total = summary?.scenarioTotal ?? summary?.total ?? 0;
+  const passed = summary?.scenarioPassed ?? summary?.passed ?? 0;
+  const passRate = total ? Math.round((passed / total) * 100) : 0;
+  elements.qaPassRate.textContent = `${passRate}%`;
+  elements.qaCompletionDuration.textContent = formatDuration(summary?.durationMs || 0);
+  elements.qaCompletionSteps.textContent = String(summary?.total ?? total ?? 0);
+  elements.qaCompletionBrowser.textContent = summary?.browserLabel || "-";
+  elements.qaCompletionMessage.textContent = fallback
+    ? (fallback.cancelled ? "실행이 중단되었습니다." : fallback.error?.message || "실행 중 오류가 발생했습니다.")
+    : total
+      ? `전체 ${total}개 시나리오 중 ${passed}개가 통과했습니다.`
+      : "아직 완료된 실행이 없습니다.";
 }
 
 function openEmbeddedExtractor(config) {
-  if (!config?.targetUrl || !config?.preloadUrl) return;
+  if (!config?.targetUrl || !config?.preloadUrl) {
+    setScenarioStatus("시나리오 추출 화면 설정이 올바르지 않습니다.");
+    return;
+  }
   elements.extractorUrl.textContent = config.targetUrl;
   seedExtractorMetadata(config.targetUrl);
   renderExtractorScenarioPreview();
   renderExtractorRecorderState();
   elements.extractorWebview.setAttribute("preload", config.preloadUrl);
   elements.extractorWebview.removeAttribute("src");
-  elements.extractorShell.classList.remove("hidden");
-  document.body.classList.add("extractor-open");
+  resetExtractorFloatingToolPosition();
   setExtractorSidebarOpen(false);
   syncExtractorResponsiveLayout();
   setExtractorResizeLoading(false);
   startExtractorSizing();
   window.addEventListener("resize", handleExtractorWindowResize);
   elements.extractorWebview.addEventListener(
+    "did-start-loading",
+    () => {
+      elements.extractorUrl.textContent = config.targetUrl;
+      setExtractorResizeLoading(true);
+    },
+    { once: true },
+  );
+  elements.extractorWebview.addEventListener(
     "dom-ready",
     () => {
+      setScenarioStatus("시나리오 추출 화면 로딩이 완료되었습니다.");
       if (typeof elements.extractorWebview.setZoomFactor === "function") {
         elements.extractorWebview.setZoomFactor(1);
       }
@@ -1403,10 +1699,37 @@ function openEmbeddedExtractor(config) {
     () => {
       sizeExtractorWebview();
       normalizeExtractorGuestViewport();
+      setExtractorResizeLoading(false);
+    },
+    { once: true },
+  );
+  elements.extractorWebview.addEventListener(
+    "did-stop-loading",
+    () => {
+      setExtractorResizeLoading(false);
+    },
+    { once: true },
+  );
+  elements.extractorWebview.addEventListener(
+    "did-fail-load",
+    (_event) => {
+      setExtractorResizeLoading(false);
+      setScenarioStatus("시나리오 추출 화면 로딩에 실패했습니다.");
     },
     { once: true },
   );
   elements.extractorWebview.setAttribute("src", config.targetUrl);
+}
+
+function openExtractorRoutePending() {
+  setPage("extractor");
+  elements.extractorUrl.textContent = "시나리오 추출 화면을 준비하고 있습니다...";
+  elements.extractorWebview.removeAttribute("src");
+  renderExtractorScenarioPreview();
+  renderExtractorRecorderState();
+  setExtractorSidebarOpen(false);
+  syncExtractorResponsiveLayout();
+  setExtractorResizeLoading(false);
 }
 
 function seedExtractorMetadata(targetUrl) {
@@ -1454,14 +1777,92 @@ function humanizeSegment(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function closeEmbeddedExtractor() {
+function teardownExtractorRoute() {
   elements.extractorWebview.removeAttribute("src");
-  elements.extractorShell.classList.add("hidden");
-  document.body.classList.remove("extractor-open");
   setExtractorSidebarOpen(false);
   window.removeEventListener("resize", handleExtractorWindowResize);
   setExtractorResizeLoading(false);
   stopExtractorSizing();
+}
+
+function initializeExtractorFloatingTool() {
+  if (!elements.extractorFloatingTool || !elements.extractorToolHandle) return;
+
+  const startDrag = (event) => {
+    const pointer = getPointerPosition(event);
+    if (!pointer) return;
+    const rect = elements.extractorFloatingTool.getBoundingClientRect();
+    const stageRect = elements.extractorWebview.closest(".extractor-webview-stage")?.getBoundingClientRect();
+    if (!stageRect) return;
+    extractorToolDragState = {
+      offsetX: pointer.x - rect.left,
+      offsetY: pointer.y - rect.top,
+      stageRect,
+    };
+    elements.extractorFloatingTool.classList.add("dragging");
+    event.preventDefault();
+  };
+
+  const continueDrag = (event) => {
+    if (!extractorToolDragState) return;
+    const pointer = getPointerPosition(event);
+    if (!pointer) return;
+    const toolWidth = elements.extractorFloatingTool.offsetWidth;
+    const toolHeight = elements.extractorFloatingTool.offsetHeight;
+    const nextLeft = clampDragPosition(
+      pointer.x - extractorToolDragState.stageRect.left - extractorToolDragState.offsetX,
+      16,
+      extractorToolDragState.stageRect.width - toolWidth - 16,
+    );
+    const nextTop = clampDragPosition(
+      pointer.y - extractorToolDragState.stageRect.top - extractorToolDragState.offsetY,
+      24,
+      extractorToolDragState.stageRect.height - toolHeight - 24,
+    );
+    elements.extractorFloatingTool.style.left = `${nextLeft}px`;
+    elements.extractorFloatingTool.style.top = `${nextTop}px`;
+    elements.extractorFloatingTool.style.right = "auto";
+  };
+
+  const endDrag = () => {
+    if (!extractorToolDragState) return;
+    extractorToolDragState = null;
+    elements.extractorFloatingTool.classList.remove("dragging");
+  };
+
+  elements.extractorToolHandle.addEventListener("mousedown", startDrag);
+  elements.extractorToolHandle.addEventListener("touchstart", startDrag, { passive: false });
+  window.addEventListener("mousemove", continueDrag);
+  window.addEventListener("touchmove", continueDrag, { passive: false });
+  window.addEventListener("mouseup", endDrag);
+  window.addEventListener("touchend", endDrag);
+}
+
+function resetExtractorFloatingToolPosition() {
+  if (!elements.extractorFloatingTool) return;
+  elements.extractorFloatingTool.style.top = "32px";
+  elements.extractorFloatingTool.style.left = "32px";
+  elements.extractorFloatingTool.style.right = "auto";
+}
+
+function getPointerPosition(event) {
+  if (event.touches?.length) {
+    return {
+      x: event.touches[0].clientX,
+      y: event.touches[0].clientY,
+    };
+  }
+  if (typeof event.clientX === "number" && typeof event.clientY === "number") {
+    return {
+      x: event.clientX,
+      y: event.clientY,
+    };
+  }
+  return null;
+}
+
+function clampDragPosition(value, min, max) {
+  return Math.min(Math.max(value, min), Math.max(min, max));
 }
 
 function renderExtractorScenarioPreview() {
@@ -1483,6 +1884,156 @@ function countScenarioRunsFallback(input) {
       .split(/\n(?=#{1,3}\s*시나리오:|\n?Scenario:|\n?시나리오:)/i)
       .map((block) => block.trim())
       .filter(Boolean).length,
+  );
+}
+
+function parseQaScenarioCatalog(input) {
+  const text = String(input || "").replace(/\r\n/g, "\n").trim();
+  if (!text) return [];
+  return text
+    .split(/\n(?=#\s*시나리오:|#\s*Scenario:)/i)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block, index) => {
+      const lines = block.split("\n");
+      const titleLine = lines[0] || "";
+      const title = titleLine.replace(/^#\s*(시나리오|Scenario)\s*:\s*/i, "").trim();
+      const metadata = {};
+      const steps = [];
+      for (const line of lines.slice(1)) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        const metaMatch = trimmed.match(/^([a-zA-Z]+)\s*:\s*(.+)$/);
+        if (metaMatch) {
+          metadata[metaMatch[1].toLowerCase()] = metaMatch[2].trim();
+          continue;
+        }
+        if (/^(Given|When|Then|And)\b/i.test(trimmed)) {
+          steps.push(trimmed);
+        }
+      }
+      const tags = (metadata.tags || "")
+        .replace(/^\[|\]$/g, "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 3);
+      return {
+        index,
+        title: title || `시나리오 ${index + 1}`,
+        scenarioId: metadata.scenarioid || `SCN-${String(index + 1).padStart(3, "0")}`,
+        tcId: metadata.tcid || "-",
+        feature: metadata.feature || "-",
+        suite: metadata.suite || "-",
+        tags,
+        steps,
+      };
+    });
+}
+
+function renderQaScenarioCatalog(preferredTitle = "") {
+  qaScenarioCatalog = parseQaScenarioCatalog(elements.qaScenarioText.value);
+  qaVisibleScenarioCatalog = filterQaScenarioCatalog(qaScenarioCatalog, qaScenarioFilterKeyword);
+  elements.qaScenarioCount.textContent = qaScenarioCatalog.length === qaVisibleScenarioCatalog.length
+    ? String(qaScenarioCatalog.length)
+    : `${qaVisibleScenarioCatalog.length} / ${qaScenarioCatalog.length}`;
+  elements.qaScenarioList.innerHTML = "";
+
+  if (!qaScenarioCatalog.length) {
+    qaSelectedScenarioIndex = 0;
+    elements.qaScenarioList.innerHTML = `<div class="qa-scenario-empty">불러온 시나리오가 없습니다.</div>`;
+    elements.qaScenarioMeta.innerHTML = "";
+    elements.qaScenarioSteps.innerHTML = `<p class="qa-scenario-empty">시나리오 생성 페이지에서 작성한 내용을 붙여넣거나, 파일을 불러오세요.</p>`;
+    elements.qaSelectedScenarioStatus.textContent = "선택된 시나리오 없음";
+    syncQaExecutionSummary();
+    renderQaWorkerCards();
+    return;
+  }
+
+  if (!qaVisibleScenarioCatalog.length) {
+    elements.qaScenarioList.innerHTML = `<div class="qa-scenario-empty">필터와 일치하는 시나리오가 없습니다.</div>`;
+    elements.qaScenarioMeta.innerHTML = "";
+    elements.qaScenarioSteps.innerHTML = `<p class="qa-scenario-empty">검색어를 지우거나 다른 키워드로 다시 시도하세요.</p>`;
+    elements.qaSelectedScenarioStatus.textContent = "필터 결과 없음";
+    syncQaExecutionSummary();
+    renderQaWorkerCards();
+    return;
+  }
+
+  const preferredIndex = preferredTitle
+    ? qaVisibleScenarioCatalog.findIndex((item) => item.title.includes(preferredTitle))
+    : -1;
+  const currentVisibleIndex = qaVisibleScenarioCatalog.findIndex((item) => item.index === qaSelectedScenarioIndex);
+  const nextVisibleItem = preferredIndex >= 0
+    ? qaVisibleScenarioCatalog[preferredIndex]
+    : qaVisibleScenarioCatalog[Math.max(0, currentVisibleIndex)];
+  qaSelectedScenarioIndex = nextVisibleItem?.index ?? qaVisibleScenarioCatalog[0].index;
+
+  for (const item of qaVisibleScenarioCatalog) {
+    const article = document.createElement("button");
+    article.type = "button";
+    article.className = "qa-scenario-card";
+    article.dataset.index = String(item.index);
+    article.innerHTML = `
+      <span class="qa-scenario-card-id">${escapeHtml(item.scenarioId)}</span>
+      <strong>${escapeHtml(item.title)}</strong>
+      <div class="qa-scenario-tags">${item.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>
+    `;
+    article.addEventListener("click", () => {
+      setQaScenarioSelection(item.index);
+    });
+    elements.qaScenarioList.appendChild(article);
+  }
+
+  setQaScenarioSelection(qaSelectedScenarioIndex);
+  renderQaWorkerCards();
+}
+
+function setQaScenarioSelection(index) {
+  const selected = qaScenarioCatalog.find((item) => item.index === index)
+    || qaVisibleScenarioCatalog[0]
+    || qaScenarioCatalog[0];
+  if (!selected) return;
+  qaSelectedScenarioIndex = selected.index;
+  elements.qaScenarioList.querySelectorAll(".qa-scenario-card").forEach((card) => {
+    card.classList.toggle("selected", Number(card.dataset.index) === qaSelectedScenarioIndex);
+  });
+
+  elements.qaScenarioMeta.innerHTML = `
+    <p><strong>scenarioId:</strong> ${escapeHtml(selected.scenarioId)}</p>
+    <p><strong>tcId:</strong> ${escapeHtml(selected.tcId)}</p>
+    <p><strong>feature:</strong> ${escapeHtml(selected.feature)}</p>
+    <p><strong>suite:</strong> ${escapeHtml(selected.suite)}</p>
+  `;
+  elements.qaScenarioSteps.innerHTML = selected.steps.length
+    ? selected.steps.map((step) => `<p>${highlightScenarioKeyword(step)}</p>`).join("")
+    : `<p class="qa-scenario-empty">정의된 단계가 없습니다.</p>`;
+  elements.qaSelectedScenarioStatus.textContent = `${selected.scenarioId} 선택됨`;
+  syncQaExecutionSummary();
+}
+
+function filterQaScenarioCatalog(items, keyword) {
+  if (!keyword) return items;
+  return items.filter((item) => {
+    const haystack = [
+      item.title,
+      item.scenarioId,
+      item.tcId,
+      item.feature,
+      item.suite,
+      ...item.tags,
+      ...item.steps,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(keyword);
+  });
+}
+
+function highlightScenarioKeyword(step) {
+  return escapeHtml(step).replace(
+    /^(Given|When|Then|And)\b/,
+    '<span class="qa-step-keyword">$1</span>',
   );
 }
 
@@ -1551,6 +2102,12 @@ function renderRunCounts({ total, passed, failed }) {
   elements.totalCount.textContent = String(total ?? 0);
   elements.passCount.textContent = String(passed ?? 0);
   elements.failCount.textContent = String(failed ?? 0);
+  const completed = Math.max(0, (passed ?? 0) + (failed ?? 0));
+  elements.qaLiveStats.innerHTML = `
+    <div><span>전체</span><strong>${total ?? 0}</strong></div>
+    <div><span>완료</span><strong>${completed}</strong></div>
+    <div><span>실패</span><strong>${failed ?? 0}</strong></div>
+  `;
 }
 
 function renderAppUpdateState(state = {}) {
@@ -1574,13 +2131,6 @@ function renderAppUpdateState(state = {}) {
     state.type !== "downloaded",
   );
   elements.installUpdate.disabled = false;
-}
-
-function initializeGuide() {
-  const guideSeen = window.localStorage.getItem("autoqa.guideSeen");
-  if (!guideSeen) {
-    window.requestAnimationFrame(() => setGuideOpen(true));
-  }
 }
 
 function loadUrlHistory() {
@@ -1687,53 +2237,180 @@ function formatHistoryDate(value) {
   }
 }
 
-function setGuideOpen(isOpen) {
-  elements.guideModal.classList.toggle("hidden", !isOpen);
+function getCommandPaletteActions() {
+  return [
+    {
+      id: "open-qa",
+      label: "실행 콘솔 열기",
+      keywords: ["qa", "실행", "console", "run"],
+      run: () => setPage("qa"),
+    },
+    {
+      id: "open-scenario",
+      label: "시나리오 워크스페이스 열기",
+      keywords: ["scenario", "builder", "시나리오", "편집"],
+      run: () => setPage("scenario"),
+    },
+    {
+      id: "open-home",
+      label: "운영 대시보드 열기",
+      keywords: ["home", "dashboard", "요약", "히스토리"],
+      run: () => setPage("home"),
+    },
+    {
+      id: "run-qa",
+      label: "현재 설정으로 QA 실행",
+      keywords: ["run", "execute", "qa", "실행"],
+      run: () => {
+        setPage("qa");
+        elements.runQa.click();
+      },
+    },
+    {
+      id: "open-file",
+      label: "시나리오 파일 불러오기",
+      keywords: ["open", "import", "scenario", "불러오기"],
+      run: () => {
+        setPage("scenario");
+        openScenarioIntoEditors();
+      },
+    },
+    {
+      id: "save-scenario",
+      label: "현재 시나리오 저장",
+      keywords: ["save", "scenario", "저장"],
+      run: () => {
+        setPage("scenario");
+        saveCurrentScenario();
+      },
+    },
+    {
+      id: "extract-scenario",
+      label: "URL에서 시나리오 추출 시작",
+      keywords: ["extract", "scenario", "추출", "url"],
+      run: () => {
+        setPage("scenario");
+        elements.extractScenario.click();
+      },
+    },
+  ];
 }
 
-function dismissGuide() {
-  window.localStorage.setItem("autoqa.guideSeen", "true");
-  setGuideOpen(false);
+function setCommandPaletteOpen(isOpen) {
+  if (!elements.commandPalette) return;
+  elements.commandPalette.classList.toggle("hidden", !isOpen);
+  if (isOpen) {
+    renderCommandPalette("");
+    elements.commandPaletteInput.value = "";
+    window.requestAnimationFrame(() => {
+      elements.commandPaletteInput.focus();
+    });
+    return;
+  }
+  elements.commandPaletteInput.blur();
+}
+
+function renderCommandPalette(searchTerm = "") {
+  if (!elements.commandPaletteList) return;
+  const normalized = String(searchTerm || "").trim().toLowerCase();
+  const actions = getCommandPaletteActions().filter((action) => {
+    if (!normalized) return true;
+    const haystack = `${action.label} ${action.keywords.join(" ")}`.toLowerCase();
+    return haystack.includes(normalized);
+  });
+  if (!actions.length) {
+    elements.commandPaletteList.innerHTML = `<div class="qa-scenario-empty">검색 결과가 없습니다.</div>`;
+    return;
+  }
+  elements.commandPaletteList.innerHTML = actions
+    .map((action) => `
+      <button class="command-palette-item" type="button" data-command-id="${action.id}">
+        <strong>${escapeHtml(action.label)}</strong>
+        <span>${escapeHtml(action.keywords.join(" · "))}</span>
+      </button>
+    `)
+    .join("");
+  elements.commandPaletteList.querySelectorAll("[data-command-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const action = actions.find((item) => item.id === button.dataset.commandId);
+      if (!action) return;
+      setCommandPaletteOpen(false);
+      action.run();
+    });
+  });
 }
 
 function setScenarioAccordionOpen(isOpen) {
+  if (!elements.scenarioAccordion) return;
   elements.scenarioAccordion.classList.toggle("open", isOpen);
-  elements.toggleScenarioAccordion.textContent = isOpen ? "접기" : "펼치기";
+  if (elements.toggleScenarioAccordion) {
+    elements.toggleScenarioAccordion.textContent = isOpen ? "접기" : "펼치기";
+  }
+}
+
+function setScenarioStatus(message) {
+  if (!elements.scenarioFile) return;
+  elements.scenarioFile.textContent = String(message || "").trim() || "Markdown 형식 권장";
 }
 
 function syncPreviewVisibility() {
-  elements.progressPreview.classList.toggle(
-    "hidden",
-    !elements.headless.checked,
-  );
+  if (elements.headless.checked) {
+    if (!elements.progressPreviewImage.classList.contains("visible")) {
+      elements.progressPreviewEmpty.classList.remove("hidden");
+      elements.progressPreviewEmpty.textContent = "테스트 화면을 기다리는 중입니다.";
+      elements.progressPreviewTitle.textContent = "QA 실행 준비";
+      elements.progressPreviewUrl.textContent = "-";
+      elements.qaPreviewLocation.textContent = getQaDisplayBaseUrl();
+    }
+    return;
+  }
+
+  elements.progressPreviewImage.removeAttribute("src");
+  elements.progressPreviewImage.classList.remove("visible");
+  elements.progressPreviewEmpty.classList.remove("hidden");
+  elements.progressPreviewEmpty.textContent =
+    "Headless를 켜면 실시간 테스트 화면이 여기에 표시됩니다.";
+  elements.progressPreviewTitle.textContent = "미리보기 비활성화";
+  elements.progressPreviewUrl.textContent = "Headless를 켜면 미리보기 활성화";
+  elements.qaPreviewLocation.textContent = getQaDisplayBaseUrl();
 }
 
 function resetScreenPreview(scenarioTotal = 0, previewEnabled = true) {
-  elements.progressPreview.classList.toggle("hidden", !previewEnabled);
   elements.progressPreviewSummary.textContent = `전체 ${scenarioTotal}개 / 통과 0 / 실패 0`;
   elements.progressPreviewImage.removeAttribute("src");
   elements.progressPreviewImage.classList.remove("visible");
   elements.progressPreviewEmpty.classList.remove("hidden");
-  elements.progressPreviewTitle.textContent = "QA 실행 준비";
-  elements.progressPreviewUrl.textContent = "-";
+  elements.progressPreviewEmpty.textContent = previewEnabled
+    ? "테스트 화면을 기다리는 중입니다."
+    : "Headless를 켜면 실시간 테스트 화면이 여기에 표시됩니다.";
+  elements.progressPreviewTitle.textContent = previewEnabled
+    ? "QA 실행 준비"
+    : "미리보기 비활성화";
+  elements.progressPreviewUrl.textContent = previewEnabled
+    ? "-"
+    : "Headless를 켜면 미리보기 활성화";
+  elements.qaPreviewLocation.textContent = previewEnabled
+    ? getQaDisplayBaseUrl()
+    : getQaDisplayBaseUrl();
 }
 
 function renderScreenPreview(progress) {
   if (!elements.headless.checked) return;
   if (!progress.previewImage) return;
-  elements.progressPreview.classList.remove("hidden");
   elements.progressPreviewImage.src = progress.previewImage;
   elements.progressPreviewImage.classList.add("visible");
   elements.progressPreviewEmpty.classList.add("hidden");
   elements.progressPreviewTitle.textContent =
     progress.currentTitle || "테스트 화면 업데이트";
   elements.progressPreviewUrl.textContent = progress.previewUrl || "-";
+  elements.qaPreviewLocation.textContent = progress.previewUrl || getQaDisplayBaseUrl();
+  renderQaScenarioCatalog(progress.currentTitle || "");
 }
 
 async function saveCurrentScenario() {
   const content = elements.scenarioText.value.trim();
   if (!content) {
-    elements.scenarioFile.textContent = "저장할 시나리오가 없습니다";
+    setScenarioStatus("저장할 시나리오가 없습니다");
     return;
   }
 
@@ -1748,10 +2425,10 @@ async function saveCurrentScenario() {
       title: inferScenarioTitle(content),
     });
     if (!result) return;
-    elements.scenarioFile.textContent = result.filePath;
+    setScenarioStatus(result.filePath);
     renderExtractorScenarioPreview();
   } catch (error) {
-    elements.scenarioFile.textContent = error.message || "시나리오 저장 실패";
+    setScenarioStatus(error.message || "시나리오 저장 실패");
   } finally {
     buttons.forEach((button) => {
       button.disabled = false;
@@ -1808,14 +2485,6 @@ function startExtractorSizing() {
     extractorResizeObserver = new ResizeObserver(runExtractorViewportRender);
     extractorResizeObserver.observe(elements.extractorShell);
   }
-
-  if (typeof MutationObserver !== "undefined") {
-    extractorFrameObserver = new MutationObserver(runExtractorViewportRender);
-    extractorFrameObserver.observe(elements.extractorWebview, {
-      childList: true,
-      subtree: true,
-    });
-  }
 }
 
 function stopExtractorSizing() {
@@ -1845,7 +2514,7 @@ function runExtractorViewportRender() {
 }
 
 function handleExtractorWindowResize() {
-  if (elements.extractorShell.classList.contains("hidden")) return;
+  if (currentPage !== "extractor") return;
   syncExtractorResponsiveLayout();
 
   const webview = elements.extractorWebview;
@@ -1903,19 +2572,18 @@ function isExtractorCompactLayout() {
 function syncExtractorResponsiveLayout() {
   const isCompact = isExtractorCompactLayout();
   elements.extractorShell.classList.toggle("compact", isCompact);
-  if (!isCompact) {
-    extractorSidebarOpen = false;
-  }
-  elements.extractorShell.classList.toggle(
-    "sidebar-open",
-    isCompact && extractorSidebarOpen,
-  );
-  elements.toggleExtractorSidebar.hidden = !isCompact;
-  elements.toggleExtractorSidebar.textContent =
-    isCompact && extractorSidebarOpen ? "도구 닫기" : "도구 열기";
+  elements.extractorShell.classList.toggle("sidebar-open", extractorSidebarOpen);
+  elements.toggleExtractorSidebar.textContent = extractorSidebarOpen
+    ? "현재 시나리오 닫기"
+    : "현재 시나리오 열기";
   elements.toggleExtractorSidebar.setAttribute(
     "aria-expanded",
-    isCompact && extractorSidebarOpen ? "true" : "false",
+    extractorSidebarOpen ? "true" : "false",
+  );
+  elements.closeExtractorSidebar.hidden = !extractorSidebarOpen;
+  elements.extractorScenarioPreview.closest(".extractor-sidebar")?.setAttribute(
+    "aria-hidden",
+    extractorSidebarOpen ? "false" : "true",
   );
 }
 
@@ -2138,6 +2806,11 @@ function renderProgress(progress) {
   elements.progressFill.style.width = `${percent}%`;
   elements.estimatedTime.textContent = formatDuration(estimatedTotalMs);
   elements.elapsedTime.textContent = formatDuration(elapsedMs);
+  elements.qaResultBadge.textContent = percent >= 100 ? "done" : "running";
+  if (progress.currentTitle && progress.currentTitle !== qaLastProgressTitle) {
+    appendQaLog(progress.currentTitle, percent >= 100 ? "success" : "info");
+    qaLastProgressTitle = progress.currentTitle;
+  }
   if (Number.isFinite(progress.scenarioTotal)) {
     renderRunCounts({
       total: progress.scenarioTotal,
@@ -2147,6 +2820,7 @@ function renderProgress(progress) {
     elements.progressPreviewSummary.textContent = `전체 ${progress.scenarioTotal}개 / 통과 ${progress.scenarioPassed || 0} / 실패 ${progress.scenarioFailed || 0}`;
   }
   renderScreenPreview(progress);
+  renderQaWorkerCards(progress);
 }
 
 function estimateTotalMs(progress, elapsedMs) {
@@ -2174,6 +2848,12 @@ function renderResults(results) {
     elements.totalCount.textContent = "0";
     elements.passCount.textContent = "0";
     elements.failCount.textContent = "0";
+    elements.qaResultBadge.textContent = "idle";
+    elements.qaLiveStats.innerHTML = `
+      <div><span>전체</span><strong>0</strong></div>
+      <div><span>완료</span><strong>0</strong></div>
+      <div><span>실패</span><strong>0</strong></div>
+    `;
     return;
   }
 
@@ -2190,7 +2870,11 @@ function renderResults(results) {
       ${result.error ? `<p>${escapeHtml(result.error)}</p>` : ""}
     `;
     elements.resultList.appendChild(item);
+    appendQaLog(`${result.title} ${result.status === "passed" ? "통과" : result.status === "failed" ? "실패" : "완료"}`, result.status === "failed" ? "error" : "success");
   }
+  const hasFailure = results.some((item) => item.status === "failed");
+  const hasPass = results.some((item) => item.status === "passed");
+  elements.qaResultBadge.textContent = hasFailure ? "failed" : hasPass ? "passed" : "done";
 }
 
 function syncFailureExportControls(result) {
@@ -2203,10 +2887,26 @@ function syncFailureExportControls(result) {
   elements.exportFailures.disabled = !hasFailures;
 }
 
+function syncRunVideoControls(result) {
+  const videoCount = Array.isArray(result?.reports?.videos)
+    ? result.reports.videos.length
+    : 0;
+  const hasVideos = videoCount > 0;
+  elements.qaDownloadVideos.classList.toggle("hidden", !hasVideos);
+  elements.qaDownloadVideos.disabled = !hasVideos;
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function normalizeRunError(message) {
+  return String(message || "")
+    .replace(/^Error invoking remote method 'qa:run':\s*/i, "")
+    .replace(/^Error:\s*/i, "")
+    .trim() || "실행 중 오류가 발생했습니다.";
 }
